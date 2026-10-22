@@ -1,14 +1,12 @@
 FROM node:20.19.0-alpine AS builder
 WORKDIR /app
-COPY ./package.json .
-COPY ./yarn.lock .
-RUN yarn cache clean
-RUN yarn install
-COPY . .
+COPY ./frontend/package.json ./frontend/package-lock.json ./
+RUN npm install
+COPY ./frontend .
 ARG TMDB_V3_API_KEY
 ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
 ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
-RUN yarn build
+RUN npm run build
 
 FROM nginx:stable-alpine
 WORKDIR /usr/share/nginx/html
