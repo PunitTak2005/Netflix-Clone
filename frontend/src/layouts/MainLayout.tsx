@@ -14,24 +14,23 @@ export default function MainLayout() {
   const navigation = useNavigation();
   // console.log("Nav Stat: ", navigation.state);
   return (
-    <Box
-      sx={{
-        width: "100%",
-        minHeight: "100vh",
-        bgcolor: "background.default",
-      }}
-    >
-      <MainHeader />
-      {navigation.state !== "idle" && <MainLoadingScreen />}
-      <DetailModalProvider>
-        <DetailModal />
-        <PortalProvider>
-          {/* <MainLoadingScreen /> */}
+    <DetailModalProvider>
+      <PortalProvider>
+        <Box
+          sx={{
+            width: "100%",
+            minHeight: "100vh",
+            bgcolor: "background.default",
+          }}
+        >
+          <MainHeader />
+          {navigation.state !== "idle" && <MainLoadingScreen />}
+          <DetailModal />
           <Outlet />
           <VideoPortalContainer />
-        </PortalProvider>
-      </DetailModalProvider>
-      {location.pathname !== `/${MAIN_PATH.watch}` && <Footer />}
-    </Box>
+          {location.pathname !== `/${MAIN_PATH.watch}` && <Footer />}
+        </Box>
+      </PortalProvider>
+    </DetailModalProvider>
   );
 }

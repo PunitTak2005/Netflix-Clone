@@ -16,7 +16,7 @@ export interface DetailModalConsumerProps {
   setDetailType: (newDetailType: DetailType) => void;
 }
 
-export const [useDetailModal, Provider] =
+export const [useDetailModal, Provider, useOptionalDetailModal] =
   createSafeContext<DetailModalConsumerProps>();
 
 export default function DetailModalProvider({

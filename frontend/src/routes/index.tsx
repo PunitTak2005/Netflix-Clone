@@ -2,11 +2,13 @@ import { Navigate, createBrowserRouter } from "react-router-dom";
 import { MAIN_PATH } from "src/constant";
 
 import MainLayout from "src/layouts/MainLayout";
+import RouteErrorBoundary from "src/components/RouteErrorBoundary";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         path: MAIN_PATH.root,

@@ -15,7 +15,7 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 
 import { useSearchVideosQuery } from "src/store/slices/discover";
-import { useDetailModal } from "src/providers/DetailModalProvider";
+import { useOptionalDetailModal } from "src/providers/DetailModalProvider";
 import { MEDIA_TYPE } from "src/types/Common";
 import { getImageUrl } from "src/utils/common";
 
@@ -63,7 +63,7 @@ export default function SearchBox() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { setDetailType } = useDetailModal();
+  const detailModal = useOptionalDetailModal();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -182,7 +182,7 @@ export default function SearchBox() {
                     key={movie.id}
                     button
                     onClick={() => {
-                      setDetailType({
+                      detailModal?.setDetailType({
                         mediaType: (movie.media_type as MEDIA_TYPE) || MEDIA_TYPE.Movie,
                         id: movie.id,
                       });

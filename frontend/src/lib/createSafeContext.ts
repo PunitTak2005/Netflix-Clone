@@ -11,5 +11,9 @@ export default function createSafeContext<TValue extends {} | null>() {
     return value;
   }
 
-  return [useContext, context.Provider] as const;
+  function useOptionalContext() {
+    return React.useContext(context);
+  }
+
+  return [useContext, context.Provider, useOptionalContext] as const;
 }
