@@ -8,6 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_IMAGE = 'punittak2005cse/netflix-clone'
     }
 
     stages {
@@ -19,7 +20,11 @@ pipeline {
 
         stage('Checkout from Git') {
             steps {
-                git branch: 'master', url: 'https://github.com/sunilkumar0633/Netflix-Clone.git'
+                git(
+                    branch: 'master',
+                    credentialsId: 'git-cred',
+                    url: 'https://github.com/PunitTak2005/Netflix-Clone.git'
+                )
             }
         }
 
@@ -66,10 +71,14 @@ pipeline {
         stage("Docker Image Build") {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh "docker build -t $JOB_NAME:$BUILD_ID --build-arg TMDB_V3_API_KEY=647f91193510922347e7200c56bd3c83 ."
-                        sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:$BUILD_ID"
-                        sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:latest"
+                    withCredentials([string(credentialsId: 'tmdb-api-key', variable: 'TMDB_KEY')]) {
+                        withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                            sh """
+                                docker build -t ${DOCKER_IMAGE}:${BUILD_ID} --build-arg TMDB_V3_API_KEY=${TMDB_KEY} .
+                                docker tag ${DOCKER_IMAGE}:${BUILD_ID} ${DOCKER_IMAGE}:${BUILD_ID}
+                                docker tag ${DOCKER_IMAGE}:${BUILD_ID} ${DOCKER_IMAGE}:latest
+                            """
+                        }
                     }
                 }
             }
@@ -79,8 +88,10 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh "docker push jacksneel/$JOB_NAME:$BUILD_ID"
-                        sh "docker push jacksneel/$JOB_NAME:latest"
+                        sh """
+                            docker push ${DOCKER_IMAGE}:${BUILD_ID}
+                            docker push ${DOCKER_IMAGE}:latest
+                        """
                     }
                 }
             }
@@ -88,7 +99,7 @@ pipeline {
 
         stage("TRIVY Image Scan") {
             steps {
-                sh "trivy image --format table -o trivy-image-report.html jacksneel/$JOB_NAME:latest "
+                sh "trivy image --format table -o trivy-image-report.html ${DOCKER_IMAGE}:latest"
             }
         }
 
@@ -113,8 +124,8 @@ pipeline {
                 subject: "Jenkins Build #${BUILD_NUMBER} - ${JOB_NAME}",
                 body: """<p>Build Status: ${currentBuild.currentResult}</p>
                          <p>Check the build details: <a href="${BUILD_URL}">${BUILD_URL}</a></p>""",
-                to: 'sunielmahla@gmail.com',
-                replyTo: 'sunielmahla@gmail.com',
+                to: 'punittak2005@gmail.com',
+                replyTo: 'punittak2005@gmail.com',
                 mimeType: 'text/html'
             )
         }
