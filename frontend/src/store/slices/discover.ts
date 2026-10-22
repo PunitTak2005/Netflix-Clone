@@ -46,7 +46,13 @@ const discoverSlice = createSlice({
           itemKey,
         } = action.payload;
         state[mediaType][itemKey].page = page;
-        state[mediaType][itemKey].results.push(...results);
+        const existingIds = new Set(
+          state[mediaType][itemKey].results.map((item) => item.id)
+        );
+        const uniqueResults = results.filter(
+          (item) => !existingIds.has(item.id)
+        );
+        state[mediaType][itemKey].results.push(...uniqueResults);
         state[mediaType][itemKey].total_pages = total_pages;
         state[mediaType][itemKey].total_results = total_results;
       }
@@ -68,7 +74,11 @@ const extendedApi = tmdbApi.injectEndpoints({
     >({
       query: ({ mediaType, genreId, page }) => ({
         url: `/discover/${mediaType}`,
-        params: { api_key: TMDB_V3_API_KEY, with_genres: genreId, page },
+        params: {
+          with_genres: genreId,
+          page,
+          ...(TMDB_V3_API_KEY ? { api_key: TMDB_V3_API_KEY } : {}),
+        },
       }),
       transformResponse: (
         response: PaginatedMovieResult,
@@ -89,7 +99,10 @@ const extendedApi = tmdbApi.injectEndpoints({
     >({
       query: ({ mediaType, apiString, page }) => ({
         url: `/${mediaType}/${apiString}`,
-        params: { api_key: TMDB_V3_API_KEY, page },
+        params: {
+          page,
+          ...(TMDB_V3_API_KEY ? { api_key: TMDB_V3_API_KEY } : {}),
+        },
       }),
       transformResponse: (
         response: PaginatedMovieResult,
@@ -109,7 +122,10 @@ const extendedApi = tmdbApi.injectEndpoints({
     >({
       query: ({ mediaType, id }) => ({
         url: `/${mediaType}/${id}`,
-        params: { api_key: TMDB_V3_API_KEY, append_to_response: "videos" },
+        params: {
+          append_to_response: "videos",
+          ...(TMDB_V3_API_KEY ? { api_key: TMDB_V3_API_KEY } : {}),
+        },
       }),
     }),
     getSimilarVideos: build.query<
@@ -118,7 +134,22 @@ const extendedApi = tmdbApi.injectEndpoints({
     >({
       query: ({ mediaType, id }) => ({
         url: `/${mediaType}/${id}/similar`,
-        params: { api_key: TMDB_V3_API_KEY },
+        params: {
+          ...(TMDB_V3_API_KEY ? { api_key: TMDB_V3_API_KEY } : {}),
+        },
+      }),
+    }),
+    searchVideos: build.query<
+      PaginatedMovieResult,
+      { query: string; page?: number }
+    >({
+      query: ({ query, page = 1 }) => ({
+        url: `/search/multi`,
+        params: {
+          query: encodeURIComponent(query).replace(/%20/g, "+"),
+          page,
+          ...(TMDB_V3_API_KEY ? { api_key: TMDB_V3_API_KEY } : {}),
+        },
       }),
     }),
   }),
@@ -133,4 +164,6 @@ export const {
   useLazyGetAppendedVideosQuery,
   useGetSimilarVideosQuery,
   useLazyGetSimilarVideosQuery,
+  useSearchVideosQuery,
+  useLazySearchVideosQuery,
 } = extendedApi;

@@ -5,6 +5,8 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import Player from "video.js/dist/types/player";
 
+import { useNavigate } from "react-router-dom";
+import { MAIN_PATH } from "src/constant";
 import { getRandomNumber } from "src/utils/common";
 import MaxLineTypography from "./MaxLineTypography";
 import PlayButton from "./PlayButton";
@@ -26,6 +28,7 @@ interface TopTrailerProps {
 }
 
 export default function TopTrailer({ mediaType }: TopTrailerProps) {
+  const navigate = useNavigate();
   const { data } = useGetVideosByMediaTypeAndCustomGenreQuery({
     mediaType,
     apiString: "popular",
@@ -123,7 +126,7 @@ export default function TopTrailer({ mediaType }: TopTrailerProps) {
                         {
                           type: "video/youtube",
                           src: `https://www.youtube.com/watch?v=${
-                            detail.videos.results[0]?.key || "L3oOldViIgY"
+                            detail.videos?.results?.[0]?.key || "L3oOldViIgY"
                           }`,
                         },
                       ],
@@ -218,7 +221,10 @@ export default function TopTrailer({ mediaType }: TopTrailerProps) {
                     {video.overview}
                   </MaxLineTypography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                    <PlayButton size="large" />
+                    <PlayButton
+                      size="large"
+                      onClick={() => navigate(`/${MAIN_PATH.watch}?id=${video.id}`)}
+                    />
                     <MoreInfoButton
                       size="large"
                       onClick={() => {

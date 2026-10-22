@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Player from "video.js/dist/types/player";
 import { Box, Stack, Typography, SliderProps } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -12,6 +12,8 @@ import KeyboardBackspaceIcon from "@mui/icons-material/KeyboardBackspace";
 
 import useWindowSize from "src/hooks/useWindowSize";
 import { formatTime } from "src/utils/common";
+import { useGetAppendedVideosQuery } from "src/store/slices/discover";
+import { MEDIA_TYPE } from "src/types/Common";
 
 import MaxLineTypography from "src/components/MaxLineTypography";
 import VolumeControllers from "src/components/watch/VolumeControllers";
@@ -21,6 +23,13 @@ import PlayerControlButton from "src/components/watch/PlayerControlButton";
 import MainLoadingScreen from "src/components/MainLoadingScreen";
 
 export function Component() {
+  const [searchParams] = useSearchParams();
+  const movieId = searchParams.get("id");
+  const { data: movieDetail } = useGetAppendedVideosQuery(
+    { mediaType: MEDIA_TYPE.Movie, id: Number(movieId) },
+    { skip: !movieId }
+  );
+
   const playerRef = useRef<Player | null>(null);
   const [playerState, setPlayerState] = useState({
     paused: false,
@@ -35,26 +44,40 @@ export function Component() {
   const [playerInitialized, setPlayerInitialized] = useState(false);
 
   const windowSize = useWindowSize();
+  const youtubeKey = movieDetail?.videos?.results?.[0]?.key;
+
   const videoJsOptions = useMemo(() => {
+    if (youtubeKey) {
+      return {
+        preload: "metadata",
+        autoplay: true,
+        controls: false,
+        width: windowSize.width,
+        height: windowSize.height,
+        techOrder: ["youtube"],
+        sources: [
+          {
+            type: "video/youtube",
+            src: `https://www.youtube.com/watch?v=${youtubeKey}`,
+          },
+        ],
+      };
+    }
+
     return {
       preload: "metadata",
       autoplay: true,
       controls: false,
-      // responsive: true,
-      // fluid: true,
       width: windowSize.width,
       height: windowSize.height,
       sources: [
         {
-          // src: videoData?.video,
-          // src: "https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8",
           src: "https://bitmovin-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
           type: "application/x-mpegurl",
         },
       ],
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowSize]);
+  }, [windowSize, youtubeKey]);
 
   const handlePlayerReady = function (player: Player): void {
     player.on("pause", () => {
@@ -140,7 +163,7 @@ export function Component() {
                   color: "white",
                 }}
               >
-                Title
+                {movieDetail?.title || "Feature Presentation"}
               </Typography>
             </Box>
             <Box
@@ -235,7 +258,7 @@ export function Component() {
                     textAlign="center"
                     sx={{ maxWidth: 300, mx: "auto", color: "white" }}
                   >
-                    Description
+                    {movieDetail?.tagline || movieDetail?.overview || "Now Playing"}
                   </MaxLineTypography>
                 </Box>
                 {/* end middle time */}

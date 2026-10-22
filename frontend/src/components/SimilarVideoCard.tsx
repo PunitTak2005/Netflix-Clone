@@ -6,9 +6,16 @@ import AddIcon from "@mui/icons-material/Add";
 import { Movie } from "src/types/Movie";
 import NetflixIconButton from "./NetflixIconButton";
 import MaxLineTypography from "./MaxLineTypography";
-import { formatMinuteToReadable, getRandomNumber } from "src/utils/common";
+import {
+  formatMinuteToReadable,
+  getRandomNumber,
+  getImageUrl,
+  getMatchScore,
+} from "src/utils/common";
 import AgeLimitChip from "./AgeLimitChip";
 import { useGetConfigurationQuery } from "src/store/slices/configuration";
+import { useDetailModal } from "src/providers/DetailModalProvider";
+import { MEDIA_TYPE } from "src/types/Common";
 
 interface SimilarVideoCardProps {
   video: Movie;
@@ -16,9 +23,19 @@ interface SimilarVideoCardProps {
 
 export default function SimilarVideoCard({ video }: SimilarVideoCardProps) {
   const { data: configuration } = useGetConfigurationQuery(undefined);
+  const { setDetailType } = useDetailModal();
+
+  const imageSrc = getImageUrl(
+    video.backdrop_path || video.poster_path,
+    "w780",
+    configuration?.images?.secure_base_url || configuration?.images?.base_url
+  );
 
   return (
-    <Card>
+    <Card
+      sx={{ cursor: "pointer", "&:hover": { transform: "scale(1.02)", transition: "transform 0.2s" } }}
+      onClick={() => setDetailType({ mediaType: MEDIA_TYPE.Movie, id: video.id })}
+    >
       <div
         style={{
           width: "100%",
@@ -27,10 +44,13 @@ export default function SimilarVideoCard({ video }: SimilarVideoCardProps) {
         }}
       >
         <img
-          src={`${configuration?.images.base_url}w780${video.backdrop_path}`}
+          src={imageSrc}
+          alt={video.title}
           style={{
             top: 0,
             height: "100%",
+            width: "100%",
+            objectFit: "cover",
             position: "absolute",
           }}
         />
@@ -72,11 +92,11 @@ export default function SimilarVideoCard({ video }: SimilarVideoCardProps) {
               <Typography
                 variant="subtitle2"
                 sx={{ color: "success.main" }}
-              >{`${getRandomNumber(100)}% Match`}</Typography>
+              >{`${getMatchScore(video.vote_average)}% Match`}</Typography>
               <Stack direction="row" spacing={1} alignItems="center">
-                <AgeLimitChip label={`${getRandomNumber(20)}+`} />
+                <AgeLimitChip label="16+" />
                 <Typography variant="body2">
-                  {video.release_date.substring(0, 4)}
+                  {video.release_date ? video.release_date.substring(0, 4) : "N/A"}
                 </Typography>
               </Stack>
             </div>

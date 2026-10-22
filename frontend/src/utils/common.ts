@@ -1,6 +1,27 @@
 export const getRandomNumber = (maxNumber: number) =>
   Math.floor(Math.random() * maxNumber);
 
+export const getImageUrl = (
+  path?: string | null,
+  size: string = "w500",
+  baseUrl: string = "https://image.tmdb.org/t/p/"
+): string => {
+  if (!path) {
+    return "/assets/netflix-logo.png";
+  }
+  const cleanBase = (baseUrl && baseUrl.startsWith("http"))
+    ? (baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`)
+    : "https://image.tmdb.org/t/p/";
+  const cleanSize = size.replace(/^\//, "");
+  const cleanPath = path.replace(/^\//, "");
+  return `${cleanBase}${cleanSize}/${cleanPath}`;
+};
+
+export const getMatchScore = (voteAverage?: number | null): number => {
+  if (!voteAverage || voteAverage <= 0) return 85;
+  return Math.min(99, Math.max(60, Math.round(voteAverage * 10)));
+};
+
 export const formatMinuteToReadable = (minutes: number) => {
   const h = Math.floor(minutes / 60);
   const m = minutes - h * 60;

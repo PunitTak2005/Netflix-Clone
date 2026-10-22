@@ -67,7 +67,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh "docker build -t $JOB_NAME:$BUILD_ID --build-arg TMDB_V3_API_KEY=647f91193510922347e7200c56bd3c83 ."
+                        sh 'docker build -t $JOB_NAME:$BUILD_ID --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY .'
                         sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:$BUILD_ID"
                         sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:latest"
                     }

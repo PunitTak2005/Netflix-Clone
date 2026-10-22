@@ -21,10 +21,15 @@ import PlayButton from "./PlayButton";
 import NetflixIconButton from "./NetflixIconButton";
 import AgeLimitChip from "./AgeLimitChip";
 import QualityChip from "./QualityChip";
-import { formatMinuteToReadable, getRandomNumber } from "src/utils/common";
 import SimilarVideoCard from "./SimilarVideoCard";
+import {
+  formatMinuteToReadable,
+  getRandomNumber,
+  getMatchScore,
+} from "src/utils/common";
 import { useDetailModal } from "src/providers/DetailModalProvider";
 import { useGetSimilarVideosQuery } from "src/store/slices/discover";
+import { MAIN_PATH } from "src/constant";
 import { MEDIA_TYPE } from "src/types/Common";
 import VideoJSPlayer from "./watch/VideoJSPlayer";
 
@@ -97,7 +102,7 @@ export default function DetailModal() {
                     {
                       type: "video/youtube",
                       src: `https://www.youtube.com/watch?v=${
-                        detail.mediaDetail?.videos.results[0]?.key ||
+                        detail.mediaDetail?.videos?.results?.[0]?.key ||
                         "L3oOldViIgY"
                       }`,
                     },
@@ -167,7 +172,14 @@ export default function DetailModal() {
                   {detail.mediaDetail?.title}
                 </MaxLineTypography>
                 <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-                  <PlayButton sx={{ color: "black", py: 0 }} />
+                  <PlayButton
+                    sx={{ color: "black", py: 0 }}
+                    onClick={() => {
+                      if (detail.id) {
+                        window.location.href = `/${MAIN_PATH.watch}?id=${detail.id}`;
+                      }
+                    }}
+                  />
                   <NetflixIconButton>
                     <AddIcon />
                   </NetflixIconButton>
@@ -195,13 +207,15 @@ export default function DetailModal() {
                         <Typography
                           variant="subtitle1"
                           sx={{ color: "success.main" }}
-                        >{`${getRandomNumber(100)}% Match`}</Typography>
+                        >{`${getMatchScore(detail.mediaDetail?.vote_average)}% Match`}</Typography>
                         <Typography variant="body2">
-                          {detail.mediaDetail?.release_date.substring(0, 4)}
+                          {detail.mediaDetail?.release_date
+                            ? detail.mediaDetail.release_date.substring(0, 4)
+                            : "N/A"}
                         </Typography>
-                        <AgeLimitChip label={`${getRandomNumber(20)}+`} />
+                        <AgeLimitChip label="16+" />
                         <Typography variant="subtitle2">{`${formatMinuteToReadable(
-                          getRandomNumber(180)
+                          detail.mediaDetail?.runtime || 120
                         )}`}</Typography>
                         <QualityChip label="HD" />
                       </Stack>
@@ -211,19 +225,23 @@ export default function DetailModal() {
                         variant="body1"
                         sx={{ mt: 2 }}
                       >
-                        {detail.mediaDetail?.overview}
+                        {detail.mediaDetail?.overview || "No overview available."}
                       </MaxLineTypography>
                     </Grid>
                     <Grid item xs={12} sm={6} md={4}>
                       <Typography variant="body2" sx={{ my: 1 }}>
-                        {`Genres : ${detail.mediaDetail?.genres
-                          .map((g) => g.name)
-                          .join(", ")}`}
+                        {`Genres : ${
+                          detail.mediaDetail?.genres && detail.mediaDetail.genres.length > 0
+                            ? detail.mediaDetail.genres.map((g) => g.name).join(", ")
+                            : "General"
+                        }`}
                       </Typography>
                       <Typography variant="body2" sx={{ my: 1 }}>
-                        {`Available in : ${detail.mediaDetail?.spoken_languages
-                          .map((l) => l.name)
-                          .join(", ")}`}
+                        {`Available in : ${
+                          detail.mediaDetail?.spoken_languages && detail.mediaDetail.spoken_languages.length > 0
+                            ? detail.mediaDetail.spoken_languages.map((l) => l.name).join(", ")
+                            : "English"
+                        }`}
                       </Typography>
                     </Grid>
                   </Grid>

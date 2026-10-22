@@ -43,7 +43,12 @@ export function Component() {
   if (genre) {
     return <GridPage mediaType={MEDIA_TYPE.Movie} genre={genre} />;
   }
-  return null;
+  return (
+    <div style={{ paddingTop: "120px", textAlign: "center", color: "white" }}>
+      <h2>Genre Not Found</h2>
+      <p style={{ color: "#aaa" }}>The requested genre could not be loaded.</p>
+    </div>
+  );
 }
 
 Component.displayName = "GenreExplore";

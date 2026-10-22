@@ -11,7 +11,12 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Movie } from "src/types/Movie";
 import { usePortal } from "src/providers/PortalProvider";
 import { useDetailModal } from "src/providers/DetailModalProvider";
-import { formatMinuteToReadable, getRandomNumber } from "src/utils/common";
+import {
+  formatMinuteToReadable,
+  getRandomNumber,
+  getImageUrl,
+  getMatchScore,
+} from "src/utils/common";
 import NetflixIconButton from "./NetflixIconButton";
 import MaxLineTypography from "./MaxLineTypography";
 import AgeLimitChip from "./AgeLimitChip";
@@ -57,7 +62,12 @@ export default function VideoCardModal({
         }}
       >
         <img
-          src={`${configuration?.images.base_url}w780${video.backdrop_path}`}
+          src={getImageUrl(
+            video.backdrop_path || video.poster_path,
+            "w780",
+            configuration?.images?.secure_base_url || configuration?.images?.base_url
+          )}
+          alt={video.title}
           style={{
             top: 0,
             height: "100%",
@@ -98,7 +108,7 @@ export default function VideoCardModal({
           <Stack direction="row" spacing={1}>
             <NetflixIconButton
               sx={{ p: 0 }}
-              onClick={() => navigate(`/${MAIN_PATH.watch}`)}
+              onClick={() => navigate(`/${MAIN_PATH.watch}?id=${video.id}`)}
             >
               <PlayCircleIcon sx={{ width: 40, height: 40 }} />
             </NetflixIconButton>
@@ -121,17 +131,17 @@ export default function VideoCardModal({
             <Typography
               variant="subtitle1"
               sx={{ color: "success.main" }}
-            >{`${getRandomNumber(100)}% Match`}</Typography>
-            <AgeLimitChip label={`${getRandomNumber(20)}+`} />
+            >{`${getMatchScore(video.vote_average)}% Match`}</Typography>
+            <AgeLimitChip label={`${getRandomNumber(10) + 10}+`} />
             <Typography variant="subtitle2">{`${formatMinuteToReadable(
-              getRandomNumber(180)
+              getRandomNumber(60) + 80
             )}`}</Typography>
             <QualityChip label="HD" />
           </Stack>
-          {genres && (
+          {genres && video.genre_ids && (
             <GenreBreadcrumbs
               genres={genres
-                .filter((genre) => video.genre_ids.includes(genre.id))
+                .filter((genre) => video.genre_ids?.includes(genre.id))
                 .map((genre) => genre.name)}
             />
           )}
