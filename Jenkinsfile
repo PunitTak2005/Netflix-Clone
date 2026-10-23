@@ -8,6 +8,12 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
+        DOCKER_HUB_NAMESPACE = 'punittak2005cse'
+        ASSIGNMENT_NAMESPACE = 'punitdevops.shop'
+        BACKEND_IMAGE = "${DOCKER_HUB_NAMESPACE}/mern-backend"
+        FRONTEND_IMAGE = "${DOCKER_HUB_NAMESPACE}/mern-frontend"
+        BACKEND_ASSIGNMENT_IMAGE = "${ASSIGNMENT_NAMESPACE}/mern-backend"
+        FRONTEND_ASSIGNMENT_IMAGE = "${ASSIGNMENT_NAMESPACE}/mern-frontend"
     }
 
     stages {
@@ -20,6 +26,18 @@ pipeline {
         stage('Checkout from Git') {
             steps {
                 git branch: 'master', url: 'https://github.com/sunilkumar0633/Netflix-Clone.git'
+            }
+        }
+
+        stage('Install Dependencies & Build') {
+            steps {
+                dir('backend') {
+                    sh 'npm ci --omit=dev'
+                }
+                dir('frontend') {
+                    sh 'npm ci'
+                    sh 'npm run build'
+                }
             }
         }
 
@@ -44,12 +62,6 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm install'
-            }
-        }
-
         stage('OWASP DP SCAN') {
             steps {
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'owasp-dp-check'
@@ -65,30 +77,47 @@ pipeline {
 
         stage("Docker Image Build") {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker build -t $JOB_NAME:$BUILD_ID --build-arg TMDB_V3_API_KEY=$TMDB_V3_API_KEY .'
-                        sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:$BUILD_ID"
-                        sh "docker tag $JOB_NAME:$BUILD_ID jacksneel/$JOB_NAME:latest"
-                    }
+                sh """
+                    docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest -t ${BACKEND_ASSIGNMENT_IMAGE}:latest ./backend
+                    docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_ASSIGNMENT_IMAGE}:latest ./frontend
+                """
+            }
+        }
+
+        stage("Trivy Image Scan") {
+            steps {
+                sh """
+                    trivy image --format table -o trivy-backend-image-report.txt ${BACKEND_IMAGE}:latest
+                    trivy image --severity HIGH,CRITICAL --exit-code 1 ${BACKEND_IMAGE}:latest
+
+                    trivy image --format table -o trivy-frontend-image-report.txt ${FRONTEND_IMAGE}:latest
+                    trivy image --severity HIGH,CRITICAL --exit-code 1 ${FRONTEND_IMAGE}:latest
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-*-image-report.txt', allowEmptyArchive: true
                 }
             }
         }
 
-        stage("Docker Image Pushing") {
+        stage("Docker Registry Login & Push") {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh "docker push jacksneel/$JOB_NAME:$BUILD_ID"
-                        sh "docker push jacksneel/$JOB_NAME:latest"
-                    }
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh """
+                        echo "\$DOCKER_PASSWORD" | docker login -u "\$DOCKER_USERNAME" --password-stdin
+                        docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                        docker push ${BACKEND_IMAGE}:latest
+                        docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        docker push ${FRONTEND_IMAGE}:latest
+                    """
                 }
-            }
-        }
-
-        stage("TRIVY Image Scan") {
-            steps {
-                sh "trivy image --format table -o trivy-image-report.html jacksneel/$JOB_NAME:latest "
             }
         }
 
