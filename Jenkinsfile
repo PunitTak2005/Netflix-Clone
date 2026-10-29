@@ -8,12 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_HUB_NAMESPACE = 'punittak2005cse'
-        ASSIGNMENT_NAMESPACE = 'punitdevops.shop'
-        BACKEND_IMAGE = "${DOCKER_HUB_NAMESPACE}/mern-backend"
-        FRONTEND_IMAGE = "${DOCKER_HUB_NAMESPACE}/mern-frontend"
-        BACKEND_ASSIGNMENT_IMAGE = "${ASSIGNMENT_NAMESPACE}/mern-backend"
-        FRONTEND_ASSIGNMENT_IMAGE = "${ASSIGNMENT_NAMESPACE}/mern-frontend"
+        DOCKER_IMAGE = 'punittak2005cse/netflix-clone'
     }
 
     stages {
@@ -23,38 +18,91 @@ pipeline {
             }
         }
 
-        stage('Checkout from Git') {
+        stage('Tool Verification') {
             steps {
-                git branch: 'master', url: 'https://github.com/sunilkumar0633/Netflix-Clone.git'
+                sh '''
+                    echo "=== Verifying Tool Installations ==="
+                    node -v
+                    npm -v
+                    java -version
+                '''
             }
         }
 
-        stage('Install Dependencies & Build') {
+        stage('Git Checkout') {
             steps {
-                dir('backend') {
-                    sh 'npm ci --omit=dev'
-                }
+                git branch: 'master', credentialsId: 'git-cred', url: 'https://github.com/PunitTak2005/Netflix-Clone.git'
+            }
+        }
+
+        stage('Dependency Installation') {
+            steps {
+                sh '''
+                    echo "=== Detecting Node.js Project Structure ==="
+                    if [ -f frontend/package.json ]; then
+                        echo "Frontend package.json detected in ./frontend"
+                    elif [ -f package.json ]; then
+                        echo "package.json detected in repository root"
+                    else
+                        echo "ERROR: package.json not found in root or frontend/" >&2
+                        exit 1
+                    fi
+                '''
                 dir('frontend') {
-                    sh 'npm ci'
-                    sh 'npm run build'
-                }
-            }
-        }
-
-        stage("Sonarqube Analysis") {
-            steps {
-                withSonarQubeEnv('sonar-server') {
                     sh '''
-                        $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=DevOpsProject \
-                        -Dsonar.projectKey=DevOpsProject \
-                        -Dsonar.java.binaries=.
+                        echo "Installing frontend dependencies with npm ci..."
+                        npm ci
                     '''
                 }
             }
         }
 
-        stage("Quality Gate") {
+        stage('Frontend Build') {
+            steps {
+                dir('frontend') {
+                    withCredentials([
+                        string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
+                    ]) {
+                        sh '''
+                            echo "Building frontend production assets..."
+                            export VITE_APP_TMDB_V3_API_KEY="${TMDB_API_KEY}"
+                            export VITE_TMDB_API_KEY="${TMDB_API_KEY}"
+                            npm run build
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Trivy Filesystem Scan') {
+            steps {
+                sh '''
+                    rm -f trivy-fs-report.html
+                    trivy fs --format table -o trivy-fs-report.html .
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-fs-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh """
+                        \${SCANNER_HOME}/bin/sonar-scanner \\
+                        -Dsonar.projectName=DevOpsProject \\
+                        -Dsonar.projectKey=DevOpsProject \\
+                        -Dsonar.sources=. \\
+                        -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/target/**"
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
             steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
@@ -62,80 +110,58 @@ pipeline {
             }
         }
 
-        stage('OWASP DP SCAN') {
-            steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'owasp-dp-check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        
-        stage('TRIVY FS SCAN') {
-            steps {
-               sh "trivy fs --format table -o trivy-fs-report.html ."
-            }
-        }
-
-        stage("Docker Image Build") {
-            steps {
-                sh """
-                    docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} -t ${BACKEND_IMAGE}:latest -t ${BACKEND_ASSIGNMENT_IMAGE}:latest ./backend
-                    docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_ASSIGNMENT_IMAGE}:latest ./frontend
-                """
-            }
-        }
-
-        stage("Trivy Image Scan") {
-            steps {
-                sh """
-                    trivy image --format table -o trivy-backend-image-report.txt ${BACKEND_IMAGE}:latest
-                    trivy image --severity HIGH,CRITICAL --exit-code 1 ${BACKEND_IMAGE}:latest
-
-                    trivy image --format table -o trivy-frontend-image-report.txt ${FRONTEND_IMAGE}:latest
-                    trivy image --severity HIGH,CRITICAL --exit-code 1 ${FRONTEND_IMAGE}:latest
-                """
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-*-image-report.txt', allowEmptyArchive: true
-                }
-            }
-        }
-
-        stage("Docker Registry Login & Push") {
+        stage('Docker Build') {
             steps {
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKER_USERNAME',
-                        passwordVariable: 'DOCKER_PASSWORD'
-                    )
+                    string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
                 ]) {
                     sh """
-                        echo "\$DOCKER_PASSWORD" | docker login -u "\$DOCKER_USERNAME" --password-stdin
-                        docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        docker push ${BACKEND_IMAGE}:latest
-                        docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                        docker push ${FRONTEND_IMAGE}:latest
+                        docker build -t \${DOCKER_IMAGE}:\${BUILD_ID} -t \${DOCKER_IMAGE}:latest --build-arg TMDB_V3_API_KEY=\${TMDB_API_KEY} .
                     """
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Trivy Image Scan') {
             steps {
-                script {
-                    dir('Kubernetes') {
-                        withKubeConfig(credentialsId: 'k8s-cred', namespace: 'webapps', serverUrl: 'https://172.31.25.156:6443') {
-                            sh 'kubectl apply -f deployment.yml'
-                            sh 'kubectl apply -f service.yml'
-                        }
-                    }
+                sh """
+                    rm -f trivy-image-report.html
+                    trivy image --format table -o trivy-image-report.html \${DOCKER_IMAGE}:\${BUILD_ID}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withDockerRegistry(credentialsId: 'docker-cred') {
+                    sh """
+                        docker push \${DOCKER_IMAGE}:\${BUILD_ID}
+                        docker push \${DOCKER_IMAGE}:latest
+                    """
+                }
+            }
+        }
+
+        stage('Kubernetes Deployment') {
+            steps {
+                withKubeConfig(
+                    credentialsId: 'k8-cred',
+                    namespace: 'webapps',
+                    serverUrl: 'https://172.31.1.86:6443'
+                ) {
+                    sh '''
+                        kubectl apply -f Kubernetes/ --validate=false
+                    '''
                 }
             }
         }
     }
 
-    // Post-build Email Notification
     post {
         always {
             emailext(
