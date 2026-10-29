@@ -65,6 +65,9 @@ pipeline {
                     ]) {
                         sh '''
                             echo "Building frontend production assets..."
+                            export VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+                            export VITE_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+                            export VITE_TMDB_V3_API_KEY="${TMDB_API_KEY}"
                             export VITE_APP_TMDB_V3_API_KEY="${TMDB_API_KEY}"
                             export VITE_TMDB_API_KEY="${TMDB_API_KEY}"
                             npm run build
