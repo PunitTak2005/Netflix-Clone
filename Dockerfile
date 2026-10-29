@@ -1,30 +1,20 @@
 # Stage 1: Build the React application
-FROM node:20.19.0-alpine AS builder
+FROM node:18-alpine AS build
 WORKDIR /app
 
-# Copy package files from the frontend directory
-COPY ./frontend/package.json ./frontend/package-lock.json ./
-RUN npm install
-
-# Copy the rest of the frontend source code
-COPY ./frontend .
-
-# Accept the TMDB API key and set environment variables
+# Accept the TMDB API key from Jenkins build-args
 ARG TMDB_V3_API_KEY
-ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+ENV VITE_TMDB_V3_API_KEY=$TMDB_V3_API_KEY
 
+COPY package*.json ./
+RUN npm install
+COPY . .
 RUN npm run build
 
 # Stage 2: Serve with Nginx and handle React Router HTML5 History fallback
-FROM nginx:stable-alpine
-WORKDIR /usr/share/nginx/html
-RUN rm -rf ./*
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy built assets from the builder stage
-COPY --from=builder /app/dist .
-
-# Generate Nginx configuration with React Router fallback support
 RUN echo 'server { \
     listen 80; \
     location / { \
@@ -35,4 +25,4 @@ RUN echo 'server { \
 }' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-g", "daemon off;"]
