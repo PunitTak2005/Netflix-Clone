@@ -101,8 +101,8 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh """
-                    docker build -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest .
-                    docker build -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
+                    docker build --no-cache -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest .
+                    docker build --no-cache -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
                 """
             }
         }
@@ -150,6 +150,10 @@ pipeline {
                                 --namespace=webapps \
                                 --dry-run=client -o yaml | kubectl apply -f -
                             kubectl apply -f Kubernetes/ --validate=false
+                            kubectl rollout restart deployment/netflix-app -n webapps
+                            kubectl rollout restart deployment/netflix-backend -n webapps
+                            kubectl rollout status deployment/netflix-app -n webapps --timeout=120s
+                            kubectl rollout status deployment/netflix-backend -n webapps --timeout=120s
                         '''
                     }
                 }

@@ -18,6 +18,7 @@ spec:
       containers:
       - name: netflix-app
         image: punittak2005cse/netflix-clone:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
 ---
