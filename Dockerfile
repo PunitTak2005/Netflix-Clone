@@ -9,12 +9,8 @@ RUN npm install
 # Copy application source code
 COPY ./frontend .
 
-# Accept the TMDB API key from Jenkins build-args and set all variants
-ARG TMDB_V3_API_KEY
-ENV VITE_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_TMDB_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+# Route all API traffic to backend proxy
+ENV VITE_APP_API_ENDPOINT_URL="/api/tmdb"
 
 RUN npm run build
 

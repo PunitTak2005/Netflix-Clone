@@ -53,18 +53,11 @@ pipeline {
         stage('Frontend Build') {
             steps {
                 dir('frontend') {
-                    withCredentials([
-                        string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
-                    ]) {
-                        sh '''
-                            echo "Building frontend production assets..."
-                            export VITE_APP_API_ENDPOINT_URL="/api/tmdb"
-                            export VITE_TMDB_V3_API_KEY="${TMDB_API_KEY}"
-                            export VITE_APP_TMDB_V3_API_KEY="${TMDB_API_KEY}"
-                            export VITE_TMDB_API_KEY="${TMDB_API_KEY}"
-                            npm run build
-                        '''
-                    }
+                    sh '''
+                        echo "Building frontend production assets..."
+                        export VITE_APP_API_ENDPOINT_URL="/api/tmdb"
+                        npm run build
+                    '''
                 }
             }
         }
@@ -107,14 +100,10 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
-                ]) {
-                    sh """
-                        docker build -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest --build-arg TMDB_V3_API_KEY=\${TMDB_API_KEY} .
-                        docker build -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
-                    """
-                }
+                sh """
+                    docker build -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest .
+                    docker build -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
+                """
             }
         }
 
@@ -152,9 +141,17 @@ pipeline {
                     namespace: 'webapps',
                     serverUrl: 'https://172.31.1.86:6443'
                 ) {
-                    sh '''
-                        kubectl apply -f Kubernetes/ --validate=false
-                    '''
+                    withCredentials([
+                        string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
+                    ]) {
+                        sh '''
+                            kubectl create secret generic tmdb-secret \
+                                --from-literal=TMDB_API_KEY="${TMDB_API_KEY}" \
+                                --namespace=webapps \
+                                --dry-run=client -o yaml | kubectl apply -f -
+                            kubectl apply -f Kubernetes/ --validate=false
+                        '''
+                    }
                 }
             }
         }

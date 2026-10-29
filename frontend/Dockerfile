@@ -11,11 +11,8 @@ RUN npm ci
 # Copy application source code
 COPY . .
 
-ARG TMDB_V3_API_KEY
-ENV VITE_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_TMDB_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+# Route all API traffic to backend proxy
+ENV VITE_APP_API_ENDPOINT_URL="/api/tmdb"
 
 # Build production assets (Vite outputs to dist/)
 RUN npm run build

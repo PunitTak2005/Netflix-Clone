@@ -25,7 +25,11 @@ spec:
         - name: PORT
           value: "5000"
         - name: TMDB_API_KEY
-          value: "647f91193510922347e7200c56bd3c83"
+          valueFrom:
+            secretKeyRef:
+              name: tmdb-secret
+              key: TMDB_API_KEY
+              optional: true
         - name: TMDB_BASE_URL
           value: "https://api.themoviedb.org/3"
 ---
@@ -43,4 +47,3 @@ spec:
     targetPort: 5000
   selector:
     app: netflix-backend
-

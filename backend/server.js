@@ -8,7 +8,10 @@ const tmdbService = require('./src/services/tmdbService');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true
+}));
 app.use(express.json());
 
 // Health & Root endpoints
@@ -34,13 +37,13 @@ app.use('/api/*', (req, res) => {
   res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl });
 });
 
-// Centralized error handling middleware
+// Centralized error handling middleware (never leaks API keys or stack traces)
 app.use((err, req, res, next) => {
   const status = err.status || 500;
   console.error(`[API Error] ${req.method} ${req.originalUrl} - ${err.message}`);
   res.status(status).json({
-    error: err.message || 'Internal Server Error',
-    status
+    error: 'TMDB request failed',
+    message: err.message || 'Unable to reach TMDB'
   });
 });
 

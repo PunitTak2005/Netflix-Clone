@@ -33,6 +33,22 @@ const tmdbHttpsAgent = new https.Agent({
 
 const TMDB_BASE_URL = process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
 
+// In-memory cache for static and semi-static TMDB responses
+const cache = new Map();
+
+function getCached(key) {
+  const entry = cache.get(key);
+  if (entry && entry.expiresAt > Date.now()) {
+    return entry.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+function setCached(key, data, ttlSeconds) {
+  cache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+}
+
 /**
  * Validates TMDB API credentials configuration
  */
@@ -42,19 +58,28 @@ function validateCredentials() {
   if (!apiKey && !accessToken) {
     return {
       valid: false,
-      message: 'TMDB credentials are not configured. Set TMDB_API_KEY or TMDB_ACCESS_TOKEN in backend/.env'
+      message: 'TMDB credentials are not configured on server. Please set TMDB_API_KEY in server environment.'
     };
   }
   return { valid: true, apiKey, accessToken };
 }
 
 /**
- * Centralized HTTP request helper for TMDB API
+ * Centralized HTTP request helper for TMDB API with server-side caching and security
  * @param {string} endpoint - Path relative to base URL, e.g. '/movie/popular'
  * @param {object} params - Query parameters
+ * @param {number} [cacheTtl] - Cache duration in seconds (optional)
  * @returns {Promise<any>}
  */
-function fetchFromTMDB(endpoint, params = {}) {
+function fetchFromTMDB(endpoint, params = {}, cacheTtl = 0) {
+  const cacheKey = `${endpoint}?${JSON.stringify(params)}`;
+  if (cacheTtl > 0) {
+    const cached = getCached(cacheKey);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const creds = validateCredentials();
     if (!creds.valid) {
@@ -66,7 +91,6 @@ function fetchFromTMDB(endpoint, params = {}) {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = new URL(`${TMDB_BASE_URL}${cleanEndpoint}`);
 
-    // If using Bearer Access Token vs v3 API Key query parameter
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -79,10 +103,10 @@ function fetchFromTMDB(endpoint, params = {}) {
       url.searchParams.set('api_key', creds.apiKey);
     }
 
-    // Attach additional query parameters (e.g. page, with_genres, append_to_response, query)
+    // Attach additional safe query parameters
     Object.keys(params).forEach(key => {
       if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-        url.searchParams.set(key, params[key]);
+        url.searchParams.set(key, String(params[key]));
       }
     });
 
@@ -93,7 +117,7 @@ function fetchFromTMDB(endpoint, params = {}) {
       method: 'GET',
       headers,
       agent: tmdbHttpsAgent,
-      timeout: 10000
+      timeout: 15000 // 15s server-side timeout
     };
 
     const req = https.request(requestOptions, (res) => {
@@ -103,17 +127,19 @@ function fetchFromTMDB(endpoint, params = {}) {
         try {
           const parsed = JSON.parse(data);
           if (res.statusCode >= 200 && res.statusCode < 300) {
+            if (cacheTtl > 0) {
+              setCached(cacheKey, parsed, cacheTtl);
+            }
             resolve(parsed);
           } else {
-            const errorMsg = parsed.status_message || `TMDB API error with status code ${res.statusCode}`;
+            const errorMsg = parsed.status_message || `TMDB API returned HTTP ${res.statusCode}`;
             const err = new Error(errorMsg);
             err.status = res.statusCode;
-            err.tmdbCode = parsed.status_code;
             reject(err);
           }
         } catch (e) {
-          const err = new Error(`Failed to parse TMDB response: ${e.message}`);
-          err.status = 500;
+          const err = new Error('Failed to parse TMDB response as JSON');
+          err.status = 502;
           reject(err);
         }
       });
@@ -139,18 +165,20 @@ function fetchFromTMDB(endpoint, params = {}) {
 const tmdbService = {
   validateCredentials,
   fetchFromTMDB,
-  getConfiguration: () => fetchFromTMDB('/configuration'),
-  getGenres: (mediaType = 'movie') => fetchFromTMDB(`/genre/${mediaType}/list`),
-  getPopular: (mediaType = 'movie', page = 1) => fetchFromTMDB(`/${mediaType}/popular`, { page }),
-  getTopRated: (mediaType = 'movie', page = 1) => fetchFromTMDB(`/${mediaType}/top_rated`, { page }),
-  getNowPlaying: (page = 1) => fetchFromTMDB('/movie/now_playing', { page }),
-  getUpcoming: (page = 1) => fetchFromTMDB('/movie/upcoming', { page }),
-  getTrending: (mediaType = 'all', timeWindow = 'day') => fetchFromTMDB(`/trending/${mediaType}/${timeWindow}`),
-  discoverByGenre: (mediaType = 'movie', genreId, page = 1) => fetchFromTMDB(`/discover/${mediaType}`, { with_genres: genreId, page }),
-  getByCustomGenre: (mediaType = 'movie', apiString = 'popular', page = 1) => fetchFromTMDB(`/${mediaType}/${apiString}`, { page }),
-  getDetails: (mediaType = 'movie', id, append = 'videos') => fetchFromTMDB(`/${mediaType}/${id}`, { append_to_response: append }),
-  getSimilar: (mediaType = 'movie', id, page = 1) => fetchFromTMDB(`/${mediaType}/${id}/similar`, { page }),
-  search: (query, page = 1) => fetchFromTMDB('/search/multi', { query: encodeURIComponent(query).replace(/%20/g, '+'), page })
+  // Static metadata: Cache configuration for 24h, genres for 12h
+  getConfiguration: () => fetchFromTMDB('/configuration', {}, 86400),
+  getGenres: (mediaType = 'movie') => fetchFromTMDB(`/genre/${mediaType}/list`, {}, 43200),
+  // Feed data: Cache for 5 minutes (300s)
+  getPopular: (mediaType = 'movie', page = 1) => fetchFromTMDB(`/${mediaType}/popular`, { page }, 300),
+  getTopRated: (mediaType = 'movie', page = 1) => fetchFromTMDB(`/${mediaType}/top_rated`, { page }, 300),
+  getNowPlaying: (page = 1) => fetchFromTMDB('/movie/now_playing', { page }, 300),
+  getUpcoming: (page = 1) => fetchFromTMDB('/movie/upcoming', { page }, 300),
+  getTrending: (mediaType = 'all', timeWindow = 'day') => fetchFromTMDB(`/trending/${mediaType}/${timeWindow}`, {}, 300),
+  discoverByGenre: (mediaType = 'movie', genreId, page = 1) => fetchFromTMDB(`/discover/${mediaType}`, { with_genres: genreId, page }, 300),
+  getByCustomGenre: (mediaType = 'movie', apiString = 'popular', page = 1) => fetchFromTMDB(`/${mediaType}/${apiString}`, { page }, 300),
+  getDetails: (mediaType = 'movie', id, append = 'videos') => fetchFromTMDB(`/${mediaType}/${id}`, { append_to_response: append }, 300),
+  getSimilar: (mediaType = 'movie', id, page = 1) => fetchFromTMDB(`/${mediaType}/${id}/similar`, { page }, 300),
+  search: (query, page = 1) => fetchFromTMDB('/search/multi', { query, page }, 60)
 };
 
 module.exports = tmdbService;

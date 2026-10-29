@@ -1,15 +1,8 @@
 import { CustomGenre } from "src/types/Genre";
 
 export const API_ENDPOINT_URL =
-  import.meta.env.VITE_APP_API_ENDPOINT_URL ||
-  import.meta.env.VITE_API_ENDPOINT_URL ||
-  "/api/tmdb";
+  import.meta.env.VITE_APP_API_ENDPOINT_URL || "/api/tmdb";
 export const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/";
-export const TMDB_V3_API_KEY =
-  import.meta.env.VITE_TMDB_V3_API_KEY ||
-  import.meta.env.VITE_APP_TMDB_V3_API_KEY ||
-  import.meta.env.VITE_TMDB_API_KEY ||
-  "";
 
 export const MAIN_PATH = {
   root: "",
