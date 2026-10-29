@@ -8,7 +8,8 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_IMAGE = 'punittak2005cse/netflix-clone'
+        FRONTEND_IMAGE = 'punittak2005cse/netflix-clone'
+        BACKEND_IMAGE = 'punittak2005cse/netflix-backend'
     }
 
     stages {
@@ -38,21 +39,13 @@ pipeline {
         stage('Dependency Installation') {
             steps {
                 sh '''
-                    echo "=== Detecting Node.js Project Structure ==="
-                    if [ -f frontend/package.json ]; then
-                        echo "Frontend package.json detected in ./frontend"
-                    elif [ -f package.json ]; then
-                        echo "package.json detected in repository root"
-                    else
-                        echo "ERROR: package.json not found in root or frontend/" >&2
-                        exit 1
-                    fi
+                    echo "=== Installing Dependencies ==="
                 '''
+                dir('backend') {
+                    sh 'npm ci --omit=dev'
+                }
                 dir('frontend') {
-                    sh '''
-                        echo "Installing frontend dependencies with npm ci..."
-                        npm ci
-                    '''
+                    sh 'npm ci'
                 }
             }
         }
@@ -65,8 +58,7 @@ pipeline {
                     ]) {
                         sh '''
                             echo "Building frontend production assets..."
-                            export VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
-                            export VITE_API_ENDPOINT_URL="https://api.themoviedb.org/3"
+                            export VITE_APP_API_ENDPOINT_URL="/api/tmdb"
                             export VITE_TMDB_V3_API_KEY="${TMDB_API_KEY}"
                             export VITE_APP_TMDB_V3_API_KEY="${TMDB_API_KEY}"
                             export VITE_TMDB_API_KEY="${TMDB_API_KEY}"
@@ -119,7 +111,8 @@ pipeline {
                     string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
                 ]) {
                     sh """
-                        docker build -t \${DOCKER_IMAGE}:\${BUILD_ID} -t \${DOCKER_IMAGE}:latest --build-arg TMDB_V3_API_KEY=\${TMDB_API_KEY} .
+                        docker build -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest --build-arg TMDB_V3_API_KEY=\${TMDB_API_KEY} .
+                        docker build -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
                     """
                 }
             }
@@ -129,7 +122,7 @@ pipeline {
             steps {
                 sh """
                     rm -f trivy-image-report.html
-                    trivy image --format table -o trivy-image-report.html \${DOCKER_IMAGE}:\${BUILD_ID}
+                    trivy image --format table -o trivy-image-report.html \${FRONTEND_IMAGE}:\${BUILD_ID}
                 """
             }
             post {
@@ -143,8 +136,10 @@ pipeline {
             steps {
                 withDockerRegistry(credentialsId: 'docker-cred') {
                     sh """
-                        docker push \${DOCKER_IMAGE}:\${BUILD_ID}
-                        docker push \${DOCKER_IMAGE}:latest
+                        docker push \${FRONTEND_IMAGE}:\${BUILD_ID}
+                        docker push \${FRONTEND_IMAGE}:latest
+                        docker push \${BACKEND_IMAGE}:\${BUILD_ID}
+                        docker push \${BACKEND_IMAGE}:latest
                     """
                 }
             }
