@@ -53,12 +53,12 @@ function setCached(key, data, ttlSeconds) {
  * Validates TMDB API credentials configuration
  */
 function validateCredentials() {
-  const apiKey = process.env.TMDB_API_KEY || process.env.VITE_APP_TMDB_V3_API_KEY;
+  const apiKey = process.env.TMDB_API_KEY;
   const accessToken = process.env.TMDB_ACCESS_TOKEN;
   if (!apiKey && !accessToken) {
     return {
       valid: false,
-      message: 'TMDB credentials are not configured on server. Please set TMDB_API_KEY in server environment.'
+      message: 'TMDB credentials are not configured on server. Please configure TMDB_API_KEY in server environment.'
     };
   }
   return { valid: true, apiKey, accessToken };
@@ -84,6 +84,7 @@ function fetchFromTMDB(endpoint, params = {}, cacheTtl = 0) {
     const creds = validateCredentials();
     if (!creds.valid) {
       const err = new Error(creds.message);
+      err.code = 'TMDB_CREDENTIALS_MISSING';
       err.status = 500;
       return reject(err);
     }
@@ -134,11 +135,13 @@ function fetchFromTMDB(endpoint, params = {}, cacheTtl = 0) {
           } else {
             const errorMsg = parsed.status_message || `TMDB API returned HTTP ${res.statusCode}`;
             const err = new Error(errorMsg);
+            err.code = res.statusCode === 401 ? 'TMDB_UNAUTHORIZED' : (res.statusCode === 404 ? 'TMDB_NOT_FOUND' : 'TMDB_ERROR');
             err.status = res.statusCode;
             reject(err);
           }
         } catch (e) {
-          const err = new Error('Failed to parse TMDB response as JSON');
+          const err = new Error('Movie data is temporarily unavailable.');
+          err.code = 'TMDB_UNAVAILABLE';
           err.status = 502;
           reject(err);
         }
@@ -147,15 +150,17 @@ function fetchFromTMDB(endpoint, params = {}, cacheTtl = 0) {
 
     req.on('timeout', () => {
       req.destroy();
-      const err = new Error('TMDB API request timed out');
+      const err = new Error('Movie data is temporarily unavailable.');
+      err.code = 'TMDB_UNAVAILABLE';
       err.status = 504;
       reject(err);
     });
 
-    req.on('error', (err) => {
-      const error = new Error(`TMDB connection failed: ${err.message}`);
-      error.status = 502;
-      reject(error);
+    req.on('error', () => {
+      const err = new Error('Movie data is temporarily unavailable.');
+      err.code = 'TMDB_UNAVAILABLE';
+      err.status = 503;
+      reject(err);
     });
 
     req.end();

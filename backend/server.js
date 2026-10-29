@@ -34,7 +34,7 @@ app.use('/api', tmdbRoutes);
 
 // 404 Handler for undefined API routes
 app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl });
+  res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Endpoint not found' });
 });
 
 // Centralized error handling middleware (never leaks API keys or stack traces)
@@ -42,8 +42,9 @@ app.use((err, req, res, next) => {
   const status = err.status || 500;
   console.error(`[API Error] ${req.method} ${req.originalUrl} - ${err.message}`);
   res.status(status).json({
-    error: 'TMDB request failed',
-    message: err.message || 'Unable to reach TMDB'
+    success: false,
+    error: err.code || 'TMDB_UNAVAILABLE',
+    message: err.message || 'Movie data is temporarily unavailable.'
   });
 });
 

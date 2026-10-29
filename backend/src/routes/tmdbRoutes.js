@@ -14,12 +14,12 @@ router.get('/configuration', async (req, res, next) => {
   }
 });
 
-// GET /api/tmdb/genre/:mediaType/list or /genres/:mediaType
-router.get(['/genre/:mediaType/list', '/genres/:mediaType'], async (req, res, next) => {
+// GET /api/tmdb/genres/:mediaType or /genre/:mediaType/list
+router.get(['/genres/:mediaType', '/genre/:mediaType/list'], async (req, res, next) => {
   try {
     const mediaType = req.params.mediaType || 'movie';
     if (!VALID_MEDIA_TYPES.has(mediaType)) {
-      return res.status(400).json({ error: 'Invalid mediaType parameter', allowed: ['movie', 'tv'] });
+      return res.status(400).json({ success: false, error: 'INVALID_PARAMETER', message: 'Invalid mediaType parameter' });
     }
     const data = await tmdbService.getGenres(mediaType);
     res.json(data);
@@ -33,7 +33,7 @@ router.get('/discover/:mediaType', async (req, res, next) => {
   try {
     const { mediaType } = req.params;
     if (!VALID_MEDIA_TYPES.has(mediaType)) {
-      return res.status(400).json({ error: 'Invalid mediaType parameter', allowed: ['movie', 'tv'] });
+      return res.status(400).json({ success: false, error: 'INVALID_PARAMETER', message: 'Invalid mediaType parameter' });
     }
     const { with_genres, page } = req.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -50,7 +50,7 @@ router.get('/trending/:mediaType/:timeWindow', async (req, res, next) => {
     const { mediaType, timeWindow } = req.params;
     const validWindows = new Set(['day', 'week']);
     if (!VALID_MEDIA_TYPES.has(mediaType) || !validWindows.has(timeWindow)) {
-      return res.status(400).json({ error: 'Invalid trending parameters' });
+      return res.status(400).json({ success: false, error: 'INVALID_PARAMETER', message: 'Invalid trending parameters' });
     }
     const data = await tmdbService.getTrending(mediaType, timeWindow);
     res.json(data);
@@ -79,7 +79,7 @@ router.get('/:mediaType/:id/similar', async (req, res, next) => {
   try {
     const { mediaType, id } = req.params;
     if (!VALID_MEDIA_TYPES.has(mediaType)) {
-      return res.status(400).json({ error: 'Invalid mediaType parameter' });
+      return res.status(400).json({ success: false, error: 'INVALID_PARAMETER', message: 'Invalid mediaType parameter' });
     }
     const pageNum = Math.max(1, parseInt(req.query.page, 10) || 1);
     const data = await tmdbService.getSimilar(mediaType, id, pageNum);
@@ -94,7 +94,7 @@ router.get('/:mediaType/:identifier', async (req, res, next) => {
   try {
     const { mediaType, identifier } = req.params;
     if (!VALID_MEDIA_TYPES.has(mediaType)) {
-      return res.status(400).json({ error: 'Invalid mediaType parameter' });
+      return res.status(400).json({ success: false, error: 'INVALID_PARAMETER', message: 'Invalid mediaType parameter' });
     }
 
     const isNumericId = /^\d+$/.test(identifier);

@@ -19,7 +19,13 @@ pipeline {
             }
         }
 
-        stage('Tool Verification') {
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'master', credentialsId: 'git-cred', url: 'https://github.com/PunitTak2005/Netflix-Clone.git'
+            }
+        }
+
+        stage('Verify Tools') {
             steps {
                 sh '''
                     echo "=== Verifying Tool Installations ==="
@@ -30,52 +36,6 @@ pipeline {
             }
         }
 
-        stage('Git Checkout') {
-            steps {
-                git branch: 'master', credentialsId: 'git-cred', url: 'https://github.com/PunitTak2005/Netflix-Clone.git'
-            }
-        }
-
-        stage('Dependency Installation') {
-            steps {
-                sh '''
-                    echo "=== Installing Dependencies ==="
-                '''
-                dir('backend') {
-                    sh 'npm ci --omit=dev'
-                }
-                dir('frontend') {
-                    sh 'npm ci'
-                }
-            }
-        }
-
-        stage('Frontend Build') {
-            steps {
-                dir('frontend') {
-                    sh '''
-                        echo "Building frontend production assets..."
-                        export VITE_APP_API_ENDPOINT_URL="/api/tmdb"
-                        npm run build
-                    '''
-                }
-            }
-        }
-
-        stage('Trivy Filesystem Scan') {
-            steps {
-                sh '''
-                    rm -f trivy-fs-report.html
-                    trivy fs --format table -o trivy-fs-report.html .
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-fs-report.html', allowEmptyArchive: true
-                }
-            }
-        }
-
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar-server') {
@@ -83,7 +43,7 @@ pipeline {
                         \${SCANNER_HOME}/bin/sonar-scanner \\
                         -Dsonar.projectName=DevOpsProject \\
                         -Dsonar.projectKey=DevOpsProject \\
-                        -Dsonar.sources=. \\
+                        -Dsonar.sources=frontend,backend \\
                         -Dsonar.exclusions="**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/target/**"
                     """
                 }
@@ -98,7 +58,35 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    echo "=== Installing Dependencies ==="
+                '''
+                dir('backend') {
+                    sh 'npm ci --omit=dev'
+                }
+                dir('frontend') {
+                    sh 'npm ci'
+                }
+            }
+        }
+
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh '''
+                    rm -f trivy-fs-report.html
+                    trivy fs --scanners vuln,secret,misconfig --format table -o trivy-fs-report.html .
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-fs-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Docker Image Build') {
             steps {
                 sh """
                     docker build --no-cache -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest .
@@ -107,11 +95,11 @@ pipeline {
             }
         }
 
-        stage('Trivy Image Scan') {
+        stage('TRIVY Image Scan') {
             steps {
                 sh """
                     rm -f trivy-image-report.html
-                    trivy image --format table -o trivy-image-report.html \${FRONTEND_IMAGE}:\${BUILD_ID}
+                    trivy image --scanners vuln,secret --format table -o trivy-image-report.html \${FRONTEND_IMAGE}:\${BUILD_ID}
                 """
             }
             post {
@@ -121,7 +109,7 @@ pipeline {
             }
         }
 
-        stage('Docker Push') {
+        stage('Docker Registry Login & Push') {
             steps {
                 withDockerRegistry(credentialsId: 'docker-cred') {
                     sh """
@@ -134,7 +122,7 @@ pipeline {
             }
         }
 
-        stage('Kubernetes Deployment') {
+        stage('Deploy to Kubernetes') {
             steps {
                 withKubeConfig(
                     credentialsId: 'k8-cred',
@@ -142,11 +130,11 @@ pipeline {
                     serverUrl: 'https://172.31.1.86:6443'
                 ) {
                     withCredentials([
-                        string(credentialsId: 'TMDB_API_KEY', variable: 'TMDB_API_KEY')
+                        string(credentialsId: 'tmdb-api-key', variable: 'TMDB_KEY')
                     ]) {
                         sh '''
                             kubectl create secret generic tmdb-secret \
-                                --from-literal=TMDB_API_KEY="${TMDB_API_KEY}" \
+                                --from-literal=TMDB_API_KEY="${TMDB_KEY}" \
                                 --namespace=webapps \
                                 --dry-run=client -o yaml | kubectl apply -f -
                             kubectl apply -f Kubernetes/ --validate=false

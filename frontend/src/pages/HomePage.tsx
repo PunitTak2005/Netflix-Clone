@@ -32,8 +32,8 @@ export function Component() {
         </Typography>
         <Typography variant="body2" sx={{ color: "grey.400", maxWidth: 500, mx: "auto" }}>
           {error && "data" in error
-            ? (error.data as any)?.error || "Error loading TMDB content."
-            : "Please ensure the backend API server is running on port 5000 and TMDB credentials are set."}
+            ? (error.data as any)?.message || (error.data as any)?.error || "Movie data is temporarily unavailable."
+            : "Movie data is temporarily unavailable. Please try again later."}
         </Typography>
       </Box>
     );
