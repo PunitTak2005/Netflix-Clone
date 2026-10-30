@@ -1,34 +1,36 @@
 # Stage 1: Build the React application
 FROM node:20.19.0-alpine AS build
+
 WORKDIR /app
 
-# Copy dependency manifests from frontend
-COPY ./frontend/package.json ./frontend/package-lock.json ./
-RUN npm install
+# Copy package files from the frontend directory
+COPY frontend/package*.json ./
 
-# Copy application source code
-COPY ./frontend .
+RUN npm ci
 
-# Route all API traffic to backend proxy
+# Copy the rest of the frontend source code
+COPY frontend/ ./
+
+ARG TMDB_V3_API_KEY
 ENV VITE_APP_API_ENDPOINT_URL="/api/tmdb"
 
 RUN npm run build
 
-# Stage 2: Production Server (serves React SPA & TMDB proxy in single container)
+# Stage 2: Runtime environment combining built frontend and backend server
 FROM node:20.19.0-alpine AS runtime
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=80
 
-# Install backend production dependencies
-COPY ./backend/package.json ./backend/package-lock.json ./
+# Copy backend dependencies and source code
+COPY backend/package*.json ./
 RUN npm ci --omit=dev
 
-# Copy backend source
-COPY ./backend .
+COPY backend/ ./
 
-# Copy compiled static frontend assets into public directory
+# Copy the built static assets from the frontend build stage
 COPY --from=build /app/dist ./public
 
 EXPOSE 80
