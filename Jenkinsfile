@@ -131,6 +131,7 @@ pipeline {
                         sh '''
                             kubectl create secret generic tmdb-secret \
                                 --from-literal=TMDB_API_KEY="${TMDB_KEY}" \
+                                --from-literal=api-key="${TMDB_KEY}" \
                                 --namespace=webapps \
                                 --dry-run=client -o yaml | kubectl apply -f -
                             kubectl apply -f Kubernetes/deployment.yml --validate=false

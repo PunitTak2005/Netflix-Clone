@@ -24,7 +24,7 @@ spec:
         env:
         - name: PORT
           value: "80"
-        - name: TMDB_API_KEY
+        - name: TMDB_V3_API_KEY
           valueFrom:
             secretKeyRef:
               name: tmdb-secret

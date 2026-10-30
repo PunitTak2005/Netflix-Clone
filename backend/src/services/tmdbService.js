@@ -53,7 +53,7 @@ function setCached(key, data, ttlSeconds) {
  * Validates TMDB API credentials configuration
  */
 function validateCredentials() {
-  const apiKey = process.env.TMDB_API_KEY || process.env.TMDB_V3_API_KEY;
+  const apiKey = process.env.TMDB_V3_API_KEY || process.env.TMDB_API_KEY || process.env.VITE_APP_TMDB_V3_API_KEY;
   const accessToken = process.env.TMDB_ACCESS_TOKEN;
   if (!apiKey && !accessToken) {
     return {
