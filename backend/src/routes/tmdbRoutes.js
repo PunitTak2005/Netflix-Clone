@@ -112,4 +112,18 @@ router.get('/:mediaType/:identifier', async (req, res, next) => {
   }
 });
 
+// Dynamic proxy fallback for any other TMDB endpoints
+router.get('/*', async (req, res, next) => {
+  try {
+    const endpoint = req.params[0] || '';
+    if (!endpoint) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Endpoint not found' });
+    }
+    const data = await tmdbService.fetchFromTMDB(`/${endpoint}`, req.query);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
