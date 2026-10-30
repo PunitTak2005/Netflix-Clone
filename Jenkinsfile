@@ -8,8 +8,7 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        FRONTEND_IMAGE = 'punittak2005cse/netflix-clone'
-        BACKEND_IMAGE = 'punittak2005cse/netflix-backend'
+        DOCKER_IMAGE = 'punittak2005cse/netflix-clone'
     }
 
     stages {
@@ -89,8 +88,7 @@ pipeline {
         stage('Docker Image Build') {
             steps {
                 sh """
-                    docker build --no-cache -t \${FRONTEND_IMAGE}:\${BUILD_ID} -t \${FRONTEND_IMAGE}:latest .
-                    docker build --no-cache -t \${BACKEND_IMAGE}:\${BUILD_ID} -t \${BACKEND_IMAGE}:latest ./backend
+                    docker build --no-cache -t \${DOCKER_IMAGE}:\${BUILD_ID} -t \${DOCKER_IMAGE}:latest .
                 """
             }
         }
@@ -99,7 +97,7 @@ pipeline {
             steps {
                 sh """
                     rm -f trivy-image-report.html
-                    trivy image --scanners vuln,secret --format table -o trivy-image-report.html \${FRONTEND_IMAGE}:\${BUILD_ID}
+                    trivy image --scanners vuln,secret --format table -o trivy-image-report.html \${DOCKER_IMAGE}:\${BUILD_ID}
                 """
             }
             post {
@@ -113,10 +111,8 @@ pipeline {
             steps {
                 withDockerRegistry(credentialsId: 'docker-cred') {
                     sh """
-                        docker push \${FRONTEND_IMAGE}:\${BUILD_ID}
-                        docker push \${FRONTEND_IMAGE}:latest
-                        docker push \${BACKEND_IMAGE}:\${BUILD_ID}
-                        docker push \${BACKEND_IMAGE}:latest
+                        docker push \${DOCKER_IMAGE}:\${BUILD_ID}
+                        docker push \${DOCKER_IMAGE}:latest
                     """
                 }
             }
@@ -137,11 +133,10 @@ pipeline {
                                 --from-literal=TMDB_API_KEY="${TMDB_KEY}" \
                                 --namespace=webapps \
                                 --dry-run=client -o yaml | kubectl apply -f -
-                            kubectl apply -f Kubernetes/ --validate=false
+                            kubectl apply -f Kubernetes/deployment.yml --validate=false
+                            kubectl apply -f Kubernetes/service.yml --validate=false
                             kubectl rollout restart deployment/netflix-app -n webapps
-                            kubectl rollout restart deployment/netflix-backend -n webapps
                             kubectl rollout status deployment/netflix-app -n webapps --timeout=120s
-                            kubectl rollout status deployment/netflix-backend -n webapps --timeout=120s
                         '''
                     }
                 }

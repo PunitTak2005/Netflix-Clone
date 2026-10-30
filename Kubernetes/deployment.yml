@@ -21,3 +21,14 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+        env:
+        - name: PORT
+          value: "80"
+        - name: TMDB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: tmdb-secret
+              key: TMDB_API_KEY
+              optional: true
+        - name: TMDB_BASE_URL
+          value: "https://api.themoviedb.org/3"

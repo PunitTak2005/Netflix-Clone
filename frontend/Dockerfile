@@ -1,11 +1,9 @@
 # Stage 1: Build the React application
-FROM node:20-alpine AS builder
-
+FROM node:20.19.0-alpine AS build
 WORKDIR /app
 
-# Copy dependency manifests first for layer caching
+# Copy dependency manifests from frontend
 COPY package*.json ./
-
 RUN npm ci
 
 # Copy application source code
@@ -14,21 +12,25 @@ COPY . .
 # Route all API traffic to backend proxy
 ENV VITE_APP_API_ENDPOINT_URL="/api/tmdb"
 
-# Build production assets (Vite outputs to dist/)
 RUN npm run build
 
-# Stage 2: Serve application with Nginx
-FROM nginx:alpine AS runtime
+# Stage 2: Production Server (serves React SPA & TMDB proxy in single container)
+FROM node:20.19.0-alpine AS runtime
+WORKDIR /app
 
-# Copy custom Nginx configuration for React SPA routing
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV NODE_ENV=production
+ENV PORT=80
 
-# Remove default Nginx HTML files
-RUN rm -rf /usr/share/nginx/html/*
+# Install backend production dependencies
+COPY ../backend/package*.json ./
+RUN npm ci --omit=dev
 
-# Copy compiled static assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy backend source
+COPY ../backend .
+
+# Copy compiled static frontend assets into public directory
+COPY --from=build /app/dist ./public
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server.js"]
