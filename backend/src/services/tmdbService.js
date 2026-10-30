@@ -1,34 +1,9 @@
 const https = require('https');
-const dns = require('dns');
 
-// Configure public DNS resolvers to prevent ISP DNS sinkholing (e.g. JioFiber in India)
-dns.setServers(['8.8.8.8', '1.1.1.1']);
-
-// Official AWS CloudFront edge IP fallbacks for api.themoviedb.org
-const CLOUDFRONT_IPS = ['65.9.130.24', '65.9.130.126', '65.9.130.53', '65.9.130.129'];
-let ipIndex = 0;
-
-// Custom HTTPS Agent that ensures reliable DNS resolution for api.themoviedb.org
+// KeepAlive HTTPS Agent
 const tmdbHttpsAgent = new https.Agent({
   keepAlive: true,
-  lookup: (hostname, options, cb) => {
-    if (typeof options === 'function') {
-      cb = options;
-      options = {};
-    }
-    if (hostname === 'api.themoviedb.org') {
-      dns.resolve4(hostname, (err, addrs) => {
-        const addresses = (addrs && addrs.length > 0) ? addrs : CLOUDFRONT_IPS;
-        if (options && options.all) {
-          cb(null, addresses.map(addr => ({ address: addr, family: 4 })));
-        } else {
-          cb(null, addresses[ipIndex++ % addresses.length], 4);
-        }
-      });
-    } else {
-      dns.lookup(hostname, options, cb);
-    }
-  }
+  timeout: 10000
 });
 
 const TMDB_BASE_URL = process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
