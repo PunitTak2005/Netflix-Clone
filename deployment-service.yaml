@@ -29,7 +29,6 @@ spec:
             secretKeyRef:
               name: tmdb-secret
               key: TMDB_API_KEY
-              optional: true
         - name: TMDB_BASE_URL
           value: "https://api.themoviedb.org/3"
 ---
