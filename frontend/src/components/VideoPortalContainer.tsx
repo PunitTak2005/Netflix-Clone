@@ -51,11 +51,12 @@ export default function VideoPortalContainer() {
           ref={container}
           variants={variant}
           style={{
-            zIndex: 1,
+            zIndex: 1200,
             position: "absolute",
             display: "inline-block",
+            pointerEvents: "auto",
             ...(rect && {
-              top: rect.top + window.pageYOffset - 0.75 * rect.height,
+              top: rect.top + window.pageYOffset - 0.5 * rect.height,
               ...(isLastElement
                 ? {
                     right: document.documentElement.clientWidth - rect.right,
@@ -63,7 +64,7 @@ export default function VideoPortalContainer() {
                 : {
                     left: isFirstElement
                       ? rect.left
-                      : rect.left - 0.25 * rect.width,
+                      : rect.left - 0.225 * rect.width,
                   }),
             }),
           }}

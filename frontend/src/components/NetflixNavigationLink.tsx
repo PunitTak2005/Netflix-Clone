@@ -13,7 +13,16 @@ export default function NetflixNavigationLink({
     <Link
       {...others}
       component={RouterLink}
-      sx={{ color: "text.primary", textDecoration: "none", ...sx }}
+      sx={{
+        color: "#e5e5e5",
+        textDecoration: "none",
+        transition: "color 0.25s ease-in-out",
+        "&:hover": {
+          color: "#b3b3b3",
+          textDecoration: "none",
+        },
+        ...sx,
+      }}
     >
       {children}
     </Link>

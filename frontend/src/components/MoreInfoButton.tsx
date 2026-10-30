@@ -8,26 +8,35 @@ export default function MoreInfoButton({ sx, ...others }: ButtonProps) {
       startIcon={
         <InfoOutlinedIcon
           sx={{
+            color: "#ffffff !important",
             fontSize: {
-              xs: "24px !important",
-              sm: "32px !important",
-              md: "40px !important",
+              xs: "22px !important",
+              sm: "28px !important",
+              md: "32px !important",
             },
           }}
         />
       }
       {...others}
       sx={{
-        ...sx,
-        px: { xs: 1, sm: 2 },
-        py: { xs: 0.5, sm: 1 },
-        fontSize: { xs: 18, sm: 24, md: 28 },
-        lineHeight: 1.5,
-        fontWeight: "bold",
-        textTransform: "capitalize",
-        bgcolor: "#6d6d6eb3",
+        bgcolor: "rgba(109, 109, 110, 0.7) !important",
+        color: "#ffffff !important",
+        backdropFilter: "blur(4px)",
+        px: { xs: 2, sm: 3, md: 3.5 },
+        py: { xs: 0.75, sm: 1 },
+        fontSize: { xs: 15, sm: 17, md: 18 },
+        lineHeight: 1.2,
+        fontWeight: 700,
         whiteSpace: "nowrap",
-        "&:hover": { bgcolor: "#6d6d6e66" },
+        textTransform: "none",
+        borderRadius: "4px",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+        transition: "all 0.2s ease-in-out",
+        "&:hover": {
+          bgcolor: "rgba(109, 109, 110, 0.4) !important",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        },
+        ...sx,
       }}
     >
       More Info

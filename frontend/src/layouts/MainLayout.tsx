@@ -12,7 +12,8 @@ import MainLoadingScreen from "src/components/MainLoadingScreen";
 export default function MainLayout() {
   const location = useLocation();
   const navigation = useNavigation();
-  // console.log("Nav Stat: ", navigation.state);
+  const isWatchPage = location.pathname.startsWith(`/${MAIN_PATH.watch}`);
+
   return (
     <DetailModalProvider>
       <PortalProvider>
@@ -21,14 +22,16 @@ export default function MainLayout() {
             width: "100%",
             minHeight: "100vh",
             bgcolor: "background.default",
+            overflowX: "hidden",
+            position: "relative",
           }}
         >
-          <MainHeader />
+          {!isWatchPage && <MainHeader />}
           {navigation.state !== "idle" && <MainLoadingScreen />}
           <DetailModal />
           <Outlet />
           <VideoPortalContainer />
-          {location.pathname !== `/${MAIN_PATH.watch}` && <Footer />}
+          {!isWatchPage && <Footer />}
         </Box>
       </PortalProvider>
     </DetailModalProvider>

@@ -1,9 +1,10 @@
 import CircularProgress from "@mui/material/CircularProgress";
+import Box from "@mui/material/Box";
 
 function MainLoadingScreen() {
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         top: 0,
         left: 0,
         right: 0,
@@ -13,12 +14,17 @@ function MainLoadingScreen() {
         alignItems: "center",
         position: "fixed",
         backgroundColor: "#141414",
-        opacity: 0.75,
-        zIndex: 2,
+        zIndex: 1500,
       }}
     >
-      <CircularProgress sx={{ color: "white" }} />
-    </div>
+      <CircularProgress
+        sx={{
+          color: "#e50914",
+        }}
+        size={52}
+        thickness={4}
+      />
+    </Box>
   );
 }
 

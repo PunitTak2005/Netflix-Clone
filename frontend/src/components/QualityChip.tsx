@@ -1,15 +1,22 @@
 import Chip, { ChipProps } from "@mui/material/Chip";
+
 export default function QualityChip({ sx, ...others }: ChipProps) {
   return (
     <Chip
       variant="outlined"
       {...others}
       sx={{
-        borderRadius: "4px",
-        p: 0.5,
-        fontSize: 12,
-        height: "100%",
-        "& > span": { p: 0 },
+        borderRadius: "3px",
+        borderColor: "rgba(255, 255, 255, 0.4)",
+        color: "rgba(255, 255, 255, 0.9)",
+        fontSize: "10px",
+        fontWeight: 700,
+        height: "18px",
+        px: 0.5,
+        letterSpacing: "0.5px",
+        "& .MuiChip-label": {
+          p: 0,
+        },
         ...sx,
       }}
     />

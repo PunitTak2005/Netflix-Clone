@@ -6,10 +6,11 @@ const Separator = (
   <Box
     component="span"
     sx={{
-      width: 4,
-      height: 4,
+      width: 3,
+      height: 3,
       borderRadius: "50%",
-      bgcolor: "text.disabled",
+      bgcolor: "rgba(255, 255, 255, 0.4)",
+      mx: "2px !important",
     }}
   />
 );
@@ -23,9 +24,25 @@ export default function GenreBreadcrumbs({
   ...others
 }: GenreBreadcrumbsProps) {
   return (
-    <Breadcrumbs separator={Separator} {...others}>
-      {genres.map((genre, idx) => (
-        <Typography key={idx} sx={{ color: "text.primary" }}>
+    <Breadcrumbs
+      separator={Separator}
+      sx={{
+        "& .MuiBreadcrumbs-ol": {
+          flexWrap: "wrap",
+        },
+      }}
+      {...others}
+    >
+      {genres.slice(0, 3).map((genre, idx) => (
+        <Typography
+          key={idx}
+          variant="caption"
+          sx={{
+            color: "rgba(255, 255, 255, 0.85)",
+            fontSize: "0.75rem",
+            fontWeight: 500,
+          }}
+        >
           {genre}
         </Typography>
       ))}

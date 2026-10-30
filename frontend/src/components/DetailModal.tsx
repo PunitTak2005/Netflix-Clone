@@ -8,6 +8,7 @@ import Typography from "@mui/material/Typography";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import Slide from "@mui/material/Slide";
+import Tooltip from "@mui/material/Tooltip";
 import { TransitionProps } from "@mui/material/transitions";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -15,8 +16,8 @@ import ThumbUpOffAltIcon from "@mui/icons-material/ThumbUpOffAlt";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import Player from "video.js/dist/types/player";
+import { useNavigate } from "react-router-dom";
 
-import MaxLineTypography from "./MaxLineTypography";
 import PlayButton from "./PlayButton";
 import NetflixIconButton from "./NetflixIconButton";
 import AgeLimitChip from "./AgeLimitChip";
@@ -24,7 +25,7 @@ import QualityChip from "./QualityChip";
 import SimilarVideoCard from "./SimilarVideoCard";
 import {
   formatMinuteToReadable,
-  getRandomNumber,
+  getImageUrl,
   getMatchScore,
 } from "src/utils/common";
 import { useDetailModal } from "src/providers/DetailModalProvider";
@@ -43,6 +44,7 @@ const Transition = forwardRef(function Transition(
 });
 
 export default function DetailModal() {
+  const navigate = useNavigate();
   const { detail, setDetailType } = useDetailModal();
   const { data: similarVideos } = useGetSimilarVideosQuery(
     { mediaType: detail.mediaType ?? MEDIA_TYPE.Movie, id: detail.id ?? 0 },
@@ -63,31 +65,84 @@ export default function DetailModal() {
     }
   }, []);
 
-  if (detail.mediaDetail) {
-    return (
-      <Dialog
-        fullWidth
-        scroll="body"
-        maxWidth="md"
-        open={!!detail.mediaDetail}
-        id="detail_dialog"
-        TransitionComponent={Transition}
-      >
-        <DialogContent sx={{ p: 0, bgcolor: "#181818" }}>
-          <Box
-            sx={{
-              top: 0,
-              left: 0,
-              right: 0,
-              position: "relative",
-              mb: 3,
-            }}
-          >
+  const handleClose = () => {
+    setDetailType({ mediaType: undefined, id: undefined });
+  };
+
+  if (!detail.mediaDetail) {
+    return null;
+  }
+
+  const media = detail.mediaDetail;
+  const youtubeTrailerKey = media.videos?.results?.[0]?.key;
+  const backdropUrl = media.backdrop_path
+    ? getImageUrl(media.backdrop_path, "original")
+    : null;
+
+  return (
+    <Dialog
+      fullWidth
+      scroll="body"
+      maxWidth="md"
+      open={!!detail.mediaDetail}
+      onClose={handleClose}
+      id="detail_dialog"
+      TransitionComponent={Transition}
+      PaperProps={{
+        sx: {
+          bgcolor: "#181818",
+          color: "#ffffff",
+          borderRadius: "10px",
+          overflow: "hidden",
+          boxShadow: "0 16px 40px rgba(0, 0, 0, 0.9)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+        },
+      }}
+    >
+      <DialogContent sx={{ p: 0, bgcolor: "#181818" }}>
+        {/* Banner Area (Video or Backdrop Image) */}
+        <Box
+          sx={{
+            width: "100%",
+            position: "relative",
+            paddingTop: "calc(9 / 16 * 100%)",
+            bgcolor: "#000000",
+            overflow: "hidden",
+          }}
+        >
+          {/* Backdrop Image fallback */}
+          {backdropUrl && (
+            <Box
+              component="img"
+              src={backdropUrl}
+              alt={media.title}
+              sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                zIndex: 0,
+              }}
+            />
+          )}
+
+          {/* YouTube Trailer Video Player */}
+          {youtubeTrailerKey && (
             <Box
               sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
                 width: "100%",
-                position: "relative",
-                height: "calc(9 / 16 * 100%)",
+                height: "100%",
+                zIndex: 1,
+                "& .video-js": {
+                  width: "100% !important",
+                  height: "100% !important",
+                  position: "absolute",
+                },
               }}
             >
               <VideoJSPlayer
@@ -101,177 +156,220 @@ export default function DetailModal() {
                   sources: [
                     {
                       type: "video/youtube",
-                      src: `https://www.youtube.com/watch?v=${
-                        detail.mediaDetail?.videos?.results?.[0]?.key ||
-                        "L3oOldViIgY"
-                      }`,
+                      src: `https://www.youtube.com/watch?v=${youtubeTrailerKey}`,
                     },
                   ],
                 }}
                 onReady={handleReady}
               />
-
-              <Box
-                sx={{
-                  background: `linear-gradient(77deg,rgba(0,0,0,.6),transparent 85%)`,
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: "26.09%",
-                  opacity: 1,
-                  position: "absolute",
-                  transition: "opacity .5s",
-                }}
-              />
-              <Box
-                sx={{
-                  backgroundColor: "transparent",
-                  backgroundImage:
-                    "linear-gradient(180deg,hsla(0,0%,8%,0) 0,hsla(0,0%,8%,.15) 15%,hsla(0,0%,8%,.35) 29%,hsla(0,0%,8%,.58) 44%,#141414 68%,#141414)",
-                  backgroundRepeat: "repeat-x",
-                  backgroundPosition: "0px top",
-                  backgroundSize: "100% 100%",
-                  bottom: 0,
-                  position: "absolute",
-                  height: "14.7vw",
-                  opacity: 1,
-                  top: "auto",
-                  width: "100%",
-                }}
-              />
-              <IconButton
-                onClick={() => {
-                  setDetailType({ mediaType: undefined, id: undefined });
-                }}
-                sx={{
-                  top: 15,
-                  right: 15,
-                  position: "absolute",
-                  bgcolor: "#181818",
-                  width: { xs: 22, sm: 40 },
-                  height: { xs: 22, sm: 40 },
-                  "&:hover": {
-                    bgcolor: "primary.main",
-                  },
-                }}
-              >
-                <CloseIcon
-                  sx={{ color: "white", fontSize: { xs: 14, sm: 22 } }}
-                />
-              </IconButton>
-              <Box
-                sx={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: 16,
-                  px: { xs: 2, sm: 3, md: 5 },
-                }}
-              >
-                <MaxLineTypography variant="h4" maxLine={1} sx={{ mb: 2 }}>
-                  {detail.mediaDetail?.title}
-                </MaxLineTypography>
-                <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-                  <PlayButton
-                    sx={{ color: "black", py: 0 }}
-                    onClick={() => {
-                      if (detail.id) {
-                        window.location.href = `/${MAIN_PATH.watch}?id=${detail.id}`;
-                      }
-                    }}
-                  />
-                  <NetflixIconButton>
-                    <AddIcon />
-                  </NetflixIconButton>
-                  <NetflixIconButton>
-                    <ThumbUpOffAltIcon />
-                  </NetflixIconButton>
-                  <Box flexGrow={1} />
-                  <NetflixIconButton
-                    size="large"
-                    onClick={() => handleMute(muted)}
-                    sx={{ zIndex: 2 }}
-                  >
-                    {!muted ? <VolumeUpIcon /> : <VolumeOffIcon />}
-                  </NetflixIconButton>
-                </Stack>
-
-                <Container
-                  sx={{
-                    p: "0px !important",
-                  }}
-                >
-                  <Grid container spacing={5} alignItems="center">
-                    <Grid item xs={12} sm={6} md={8}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ color: "success.main" }}
-                        >{`${getMatchScore(detail.mediaDetail?.vote_average)}% Match`}</Typography>
-                        <Typography variant="body2">
-                          {detail.mediaDetail?.release_date
-                            ? detail.mediaDetail.release_date.substring(0, 4)
-                            : "N/A"}
-                        </Typography>
-                        <AgeLimitChip label="16+" />
-                        <Typography variant="subtitle2">{`${formatMinuteToReadable(
-                          detail.mediaDetail?.runtime || 120
-                        )}`}</Typography>
-                        <QualityChip label="HD" />
-                      </Stack>
-
-                      <MaxLineTypography
-                        maxLine={3}
-                        variant="body1"
-                        sx={{ mt: 2 }}
-                      >
-                        {detail.mediaDetail?.overview || "No overview available."}
-                      </MaxLineTypography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2" sx={{ my: 1 }}>
-                        {`Genres : ${
-                          detail.mediaDetail?.genres && detail.mediaDetail.genres.length > 0
-                            ? detail.mediaDetail.genres.map((g) => g.name).join(", ")
-                            : "General"
-                        }`}
-                      </Typography>
-                      <Typography variant="body2" sx={{ my: 1 }}>
-                        {`Available in : ${
-                          detail.mediaDetail?.spoken_languages && detail.mediaDetail.spoken_languages.length > 0
-                            ? detail.mediaDetail.spoken_languages.map((l) => l.name).join(", ")
-                            : "English"
-                        }`}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Container>
-              </Box>
             </Box>
-            {similarVideos && similarVideos.results.length > 0 && (
-              <Container
+          )}
+
+          {/* Close Button in upper right */}
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              top: 16,
+              right: 16,
+              position: "absolute",
+              bgcolor: "#181818",
+              color: "#ffffff",
+              zIndex: 10,
+              width: 38,
+              height: 38,
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
+              transition: "transform 0.2s ease, background-color 0.2s ease",
+              "&:hover": {
+                bgcolor: "rgba(255, 255, 255, 0.2)",
+                transform: "scale(1.1)",
+              },
+            }}
+          >
+            <CloseIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+
+          {/* Bottom Vignette on banner */}
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "40%",
+              background: "linear-gradient(180deg, rgba(24, 24, 24, 0) 0%, #181818 100%)",
+              zIndex: 2,
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Floating Title & Action Buttons at bottom of banner */}
+          <Box
+            sx={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 20,
+              px: { xs: 3, sm: 5 },
+              zIndex: 3,
+            }}
+          >
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 900,
+                color: "#ffffff",
+                fontSize: { xs: "1.6rem", sm: "2.4rem", md: "2.8rem" },
+                textShadow: "2px 4px 10px rgba(0, 0, 0, 0.8)",
+                mb: 2,
+                lineHeight: 1.1,
+              }}
+            >
+              {media.title || media.original_title}
+            </Typography>
+
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <PlayButton
+                size="large"
+                onClick={() => {
+                  if (detail.id) {
+                    navigate(`/${MAIN_PATH.watch}?id=${detail.id}`);
+                  }
+                }}
+              />
+              <Tooltip title="Add to My List">
+                <NetflixIconButton size="medium">
+                  <AddIcon />
+                </NetflixIconButton>
+              </Tooltip>
+              <Tooltip title="I like this">
+                <NetflixIconButton size="medium">
+                  <ThumbUpOffAltIcon />
+                </NetflixIconButton>
+              </Tooltip>
+              <Box sx={{ flexGrow: 1 }} />
+              <NetflixIconButton
+                size="medium"
+                onClick={() => handleMute(muted)}
+              >
+                {!muted ? <VolumeUpIcon /> : <VolumeOffIcon />}
+              </NetflixIconButton>
+            </Stack>
+          </Box>
+        </Box>
+
+        {/* Modal Body: Metadata & Overview */}
+        <Container sx={{ py: 3, px: { xs: 3, sm: 5 } }}>
+          <Grid container spacing={4}>
+            {/* Left Column (Metadata & Overview) */}
+            <Grid item xs={12} md={8}>
+              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ color: "#46d369", fontWeight: 700 }}
+                >
+                  {`${getMatchScore(media.vote_average)}% Match`}
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#bcbcbc" }}>
+                  {media.release_date
+                    ? media.release_date.substring(0, 4)
+                    : "2024"}
+                </Typography>
+                <AgeLimitChip label="16+" />
+                <Typography variant="body2" sx={{ color: "#bcbcbc" }}>
+                  {formatMinuteToReadable(media.runtime || 115)}
+                </Typography>
+                <QualityChip label="HD" />
+              </Stack>
+
+              <Typography
+                variant="body1"
                 sx={{
-                  py: 2,
-                  px: { xs: 2, sm: 3, md: 5 },
+                  color: "#ffffff",
+                  lineHeight: 1.6,
+                  fontSize: "1rem",
+                  fontWeight: 400,
                 }}
               >
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  More Like This
-                </Typography>
-                <Grid container spacing={2}>
-                  {similarVideos.results.map((sm) => (
-                    <Grid item xs={6} sm={4} key={sm.id}>
-                      <SimilarVideoCard video={sm} />
-                    </Grid>
-                  ))}
-                </Grid>
-              </Container>
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+                {media.overview || "No overview available."}
+              </Typography>
+            </Grid>
 
-  return null;
+            {/* Right Column (Cast, Genres, Languages) */}
+            <Grid item xs={12} md={4}>
+              <Stack spacing={1.5}>
+                <Typography variant="body2" sx={{ color: "#777777", lineHeight: 1.5 }}>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#777777" }}
+                  >
+                    Genres:{" "}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#ffffff" }}
+                  >
+                    {media.genres && media.genres.length > 0
+                      ? media.genres.map((g) => g.name).join(", ")
+                      : "Action, Drama"}
+                  </Typography>
+                </Typography>
+
+                <Typography variant="body2" sx={{ color: "#777777", lineHeight: 1.5 }}>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#777777" }}
+                  >
+                    Original Language:{" "}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#ffffff", textTransform: "capitalize" }}
+                  >
+                    {media.original_language || "English"}
+                  </Typography>
+                </Typography>
+
+                <Typography variant="body2" sx={{ color: "#777777", lineHeight: 1.5 }}>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#777777" }}
+                  >
+                    This title is:{" "}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ color: "#ffffff" }}
+                  >
+                    Exciting, Suspenseful
+                  </Typography>
+                </Typography>
+              </Stack>
+            </Grid>
+          </Grid>
+
+          {/* "More Like This" Section */}
+          {similarVideos && similarVideos.results.length > 0 && (
+            <Box sx={{ mt: 5, pt: 3, borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 2.5, color: "#ffffff" }}>
+                More Like This
+              </Typography>
+              <Grid container spacing={2}>
+                {similarVideos.results.slice(0, 9).map((sm) => (
+                  <Grid item xs={12} sm={6} md={4} key={sm.id}>
+                    <SimilarVideoCard video={sm} />
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+        </Container>
+      </DialogContent>
+    </Dialog>
+  );
 }

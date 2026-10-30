@@ -14,27 +14,32 @@ class VideoItemWithHoverPure extends PureComponent<VideoItemWithHoverPureType> {
         style={{
           zIndex: 9,
           cursor: "pointer",
-          borderRadius: 0.5,
+          borderRadius: "4px",
           width: "100%",
           position: "relative",
           paddingTop: "calc(9 / 16 * 100%)",
+          backgroundColor: "#202020",
+          overflow: "hidden",
         }}
       >
         <img
           src={this.props.src}
+          alt=""
+          loading="lazy"
           style={{
             top: 0,
+            left: 0,
+            width: "100%",
             height: "100%",
             objectFit: "cover",
             position: "absolute",
             borderRadius: "4px",
+            transition: "opacity 0.2s ease",
           }}
           onPointerEnter={() => {
-            // console.log("onPointerEnter");
             this.props.handleHover(true);
           }}
           onPointerLeave={() => {
-            // console.log("onPointerLeave");
             this.props.handleHover(false);
           }}
         />

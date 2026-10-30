@@ -1,10 +1,18 @@
 import type { PaletteMode } from "@mui/material";
 
 const PRIMARY = {
-  light: "#B8B8B8",
+  light: "#e50914",
   main: "#141414",
-  dark: "#0E0A0A",
+  dark: "#000000",
 };
+
+const NETFLIX_RED = {
+  light: "#ff3d47",
+  main: "#e50914",
+  dark: "#b81d24",
+  contrastText: "#ffffff",
+};
+
 const GREY = {
   100: "#F9FAFB",
   200: "#F4F6F8",
@@ -14,12 +22,13 @@ const GREY = {
   600: "#637381",
   700: "#454F5B",
   800: "#212B36",
-  900: "#161C24",
+  900: "#181818",
 };
 
 const COMMON = {
-  common: { black: "#000", white: "#fff" },
-  primary: { ...PRIMARY, contrastText: "#fff" },
+  common: { black: "#000000", white: "#ffffff" },
+  primary: { ...PRIMARY, contrastText: "#ffffff" },
+  error: NETFLIX_RED,
   grey: GREY,
   action: {
     active: GREY[500],
@@ -30,8 +39,15 @@ const COMMON = {
 
 const palette = {
   ...COMMON,
-  text: { primary: "#fff", secondary: GREY[500], disabled: GREY[600] },
-  background: { default: PRIMARY.main, paper: PRIMARY.main },
+  text: {
+    primary: "#ffffff",
+    secondary: "#a3a3a3",
+    disabled: GREY[600],
+  },
+  background: {
+    default: "#141414",
+    paper: "#181818",
+  },
   mode: "dark" as PaletteMode,
 };
 

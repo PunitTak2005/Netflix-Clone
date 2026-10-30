@@ -5,16 +5,19 @@ export default function MaturityRate({ children }: { children: ReactNode }) {
   return (
     <Box
       sx={{
-        py: 1,
+        py: 0.75,
         pl: 1.5,
         pr: 3,
-        fontSize: 22,
+        fontSize: { xs: "0.875rem", sm: "1rem", md: "1.1rem" },
+        fontWeight: 600,
         display: "flex",
-        alignItem: "center",
-        color: "text.primary",
-        border: "3px #dcdcdc",
-        borderLeftStyle: "solid",
-        bgcolor: "#33333399",
+        alignItems: "center",
+        color: "#ffffff",
+        borderLeft: "3px solid #dcdcdc",
+        bgcolor: "rgba(51, 51, 51, 0.6)",
+        backdropFilter: "blur(4px)",
+        borderTopRightRadius: 2,
+        borderBottomRightRadius: 2,
       }}
     >
       {children}

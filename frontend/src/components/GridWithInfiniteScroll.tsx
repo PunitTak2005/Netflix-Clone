@@ -13,6 +13,7 @@ interface GridWithInfiniteScrollProps {
   data: PaginatedMovieResult;
   handleNext: (page: number) => void;
 }
+
 export default function GridWithInfiniteScroll({
   genre,
   data,
@@ -29,41 +30,51 @@ export default function GridWithInfiniteScroll({
     ) {
       handleNext(data.page + 1);
     }
-  }, [intersection]);
+  }, [intersection, data.page, data.total_pages, handleNext]);
+
+  const filteredMovies = data.results.filter((v) => !!v.backdrop_path);
 
   return (
     <>
       <Container
         maxWidth={false}
         sx={{
-          px: { xs: "30px", sm: "60px" },
-          pb: 4,
-          pt: "150px",
-          bgcolor: "inherit",
+          px: { xs: "20px", sm: "36px", md: "60px" },
+          pb: 8,
+          pt: { xs: "90px", sm: "110px", md: "130px" },
+          bgcolor: "background.default",
+          minHeight: "100vh",
         }}
       >
         <Typography
-          variant="h5"
-          sx={{ color: "text.primary", mb: 2 }}
-        >{`${genre.name} Movies`}</Typography>
-        <Grid container spacing={2}>
-          {data.results
-            .filter((v) => !!v.backdrop_path)
-            .map((video, idx) => (
-              <Grid
-                key={`${video.id}_${idx}`}
-                item
-                xs={6}
-                sm={3}
-                md={2}
-                sx={{ zIndex: 1 }}
-              >
-                <VideoItemWithHover video={video} />
-              </Grid>
-            ))}
+          variant="h4"
+          sx={{
+            color: "#ffffff",
+            fontWeight: 800,
+            fontSize: { xs: "1.5rem", sm: "2rem", md: "2.4rem" },
+            mb: 3,
+          }}
+        >
+          {`${genre.name} Movies`}
+        </Typography>
+
+        <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }}>
+          {filteredMovies.map((video, idx) => (
+            <Grid
+              key={`${video.id}_${idx}`}
+              item
+              xs={6}
+              sm={4}
+              md={3}
+              lg={2}
+              sx={{ zIndex: 1 }}
+            >
+              <VideoItemWithHover video={video} />
+            </Grid>
+          ))}
         </Grid>
       </Container>
-      <Box sx={{ display: "hidden" }} ref={intersectionRef} />
+      <Box sx={{ height: 40 }} ref={intersectionRef} />
     </>
   );
 }

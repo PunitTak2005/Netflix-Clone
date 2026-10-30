@@ -8,26 +8,33 @@ const ArrowStyle = styled(Box)(({ theme }) => ({
   top: 0,
   bottom: 0,
   position: "absolute",
-  zIndex: 9,
+  zIndex: 10,
   height: "100%",
-  opacity: 0.48,
+  opacity: 0,
   display: "flex",
   cursor: "pointer",
   alignItems: "center",
   justifyContent: "center",
   color: theme.palette.common.white,
-  // background: theme.palette.grey[700],
-  transition: theme.transitions.create("opacity"),
+  background: "rgba(20, 20, 20, 0.5)",
+  backdropFilter: "blur(2px)",
+  transition: "opacity 0.25s ease, background-color 0.25s ease",
   "&:hover": {
-    opacity: 0.8,
-    background: theme.palette.grey[900],
+    background: "rgba(20, 20, 20, 0.85)",
+    "& .nav-icon": {
+      transform: "scale(1.25)",
+    },
+  },
+  "& .nav-icon": {
+    fontSize: 28,
+    transition: "transform 0.2s ease",
   },
   [theme.breakpoints.down("sm")]: {
     display: "none",
   },
 }));
 
-interface CustomNaviationProps {
+interface CustomNavigationProps {
   isEnd: boolean;
   arrowWidth: number;
   children: ReactNode;
@@ -43,41 +50,47 @@ export default function CustomNavigation({
   onPrevious,
   arrowWidth,
   activeSlideIndex,
-}: CustomNaviationProps) {
+}: CustomNavigationProps) {
   return (
-    <>
+    <Box
+      sx={{
+        position: "relative",
+        "&:hover .slider-nav-arrow": {
+          opacity: 1,
+        },
+      }}
+    >
       {activeSlideIndex > 0 && (
         <ArrowStyle
+          className="slider-nav-arrow"
           onClick={onPrevious}
           sx={{
             left: 0,
             width: { xs: arrowWidth / 2, sm: arrowWidth },
-            borderTopRightRadius: { xs: "4px" },
-            borderBottomRightRadius: { xs: "4px" },
-            // backgroundImage: (theme) =>
-            //   `linear-gradient(to right, ${theme.palette.background.default} 0%, rgba(0,0,0,0) 100%)`,
+            borderTopRightRadius: "4px",
+            borderBottomRightRadius: "4px",
           }}
         >
-          <ArrowBackIosNewIcon />
+          <ArrowBackIosNewIcon className="nav-icon" />
         </ArrowStyle>
       )}
 
       {children}
+
       {!isEnd && (
         <ArrowStyle
+          className="slider-nav-arrow"
           onClick={onNext}
           sx={{
             right: 0,
             width: { xs: arrowWidth / 2, sm: arrowWidth },
-            borderTopLeftRadius: { xs: "4px" },
-            borderBottomLeftRadius: { xs: "4px" },
-            // backgroundImage: (theme) =>
-            //   `linear-gradient(to left, ${theme.palette.background.default} 0%, rgba(0,0,0,0) 100%)`,
+            borderTopLeftRadius: "4px",
+            borderBottomLeftRadius: "4px",
           }}
         >
-          <ArrowForwardIosIcon />
+          <ArrowForwardIosIcon className="nav-icon" />
         </ArrowStyle>
       )}
-    </>
+    </Box>
   );
 }

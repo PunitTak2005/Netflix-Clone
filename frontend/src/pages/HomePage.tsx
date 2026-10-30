@@ -1,4 +1,3 @@
-import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { COMMON_TITLES } from "src/constant";
@@ -27,7 +26,7 @@ export function Component() {
   if (isError) {
     return (
       <Box sx={{ pt: 16, pb: 8, px: 4, textAlign: "center", color: "white" }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
           Unable to connect to TMDB Movie Service
         </Typography>
         <Typography variant="body2" sx={{ color: "grey.400", maxWidth: 500, mx: "auto" }}>
@@ -40,18 +39,33 @@ export function Component() {
   }
 
   const genreList = genres && genres.length > 0 ? genres : [];
+  const allRows = [...COMMON_TITLES, ...genreList];
 
   return (
-    <Stack spacing={2}>
+    <Box sx={{ position: "relative", bgcolor: "background.default", pb: 10 }}>
       <HeroSection mediaType={MEDIA_TYPE.Movie} />
-      {[...COMMON_TITLES, ...genreList].map((genre: Genre | CustomGenre) => (
-        <SliderRowForGenre
-          key={genre.id || genre.name}
-          genre={genre}
-          mediaType={MEDIA_TYPE.Movie}
-        />
-      ))}
-    </Stack>
+
+      {/* Row Containers: First row floats up onto the billboard's bottom gradient */}
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 5,
+          mt: { xs: "-40px", sm: "-70px", md: "-110px", lg: "-140px" },
+          display: "flex",
+          flexDirection: "column",
+          gap: { xs: 3, sm: 4, md: 5 },
+        }}
+      >
+        {allRows.map((genre: Genre | CustomGenre, idx: number) => (
+          <SliderRowForGenre
+            key={genre.id || genre.name}
+            genre={genre}
+            mediaType={MEDIA_TYPE.Movie}
+            isTop10Row={idx === 0}
+          />
+        ))}
+      </Box>
+    </Box>
   );
 }
 

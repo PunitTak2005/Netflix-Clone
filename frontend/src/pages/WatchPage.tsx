@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Player from "video.js/dist/types/player";
 import { Box, Stack, Typography, SliderProps } from "@mui/material";
@@ -20,7 +20,6 @@ import VolumeControllers from "src/components/watch/VolumeControllers";
 import VideoJSPlayer from "src/components/watch/VideoJSPlayer";
 import PlayerSeekbar from "src/components/watch/PlayerSeekbar";
 import PlayerControlButton from "src/components/watch/PlayerControlButton";
-import MainLoadingScreen from "src/components/MainLoadingScreen";
 
 export function Component() {
   const [searchParams] = useSearchParams();
@@ -31,6 +30,9 @@ export function Component() {
   );
 
   const playerRef = useRef<Player | null>(null);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<any>(null);
+
   const [playerState, setPlayerState] = useState({
     paused: false,
     muted: false,
@@ -81,21 +83,16 @@ export function Component() {
 
   const handlePlayerReady = function (player: Player): void {
     player.on("pause", () => {
-      setPlayerState((draft) => {
-        return { ...draft, paused: true };
-      });
+      setPlayerState((draft) => ({ ...draft, paused: true }));
+      setShowControls(true);
     });
 
     player.on("play", () => {
-      setPlayerState((draft) => {
-        return { ...draft, paused: false };
-      });
+      setPlayerState((draft) => ({ ...draft, paused: false }));
     });
 
     player.on("timeupdate", () => {
-      setPlayerState((draft) => {
-        return { ...draft, playedSeconds: player.currentTime() || 0 };
-      });
+      setPlayerState((draft) => ({ ...draft, playedSeconds: player.currentTime() || 0 }));
     });
 
     player.one("durationchange", () => {
@@ -104,17 +101,32 @@ export function Component() {
     });
 
     playerRef.current = player;
-
-    setPlayerState((draft) => {
-      return { ...draft, paused: player.paused() };
-    });
+    setPlayerState((draft) => ({ ...draft, paused: player.paused() }));
   };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    if (!playerState.paused) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3500);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleVolumeChange: SliderProps["onChange"] = (_: unknown, value: number | number[]) => {
     playerRef.current?.volume((value as number) / 100);
-    setPlayerState((draft) => {
-      return { ...draft, volume: (value as number) / 100 };
-    });
+    setPlayerState((draft) => ({ ...draft, volume: (value as number) / 100 }));
   };
 
   const handleSeekTo = (v: number) => {
@@ -125,14 +137,29 @@ export function Component() {
     navigate("/browse");
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   if (!!videoJsOptions.width) {
     return (
       <Box
+        onMouseMove={handleMouseMove}
         sx={{
           position: "relative",
+          bgcolor: "#000000",
+          width: "100vw",
+          height: "100vh",
+          overflow: "hidden",
+          cursor: showControls ? "default" : "none",
         }}
       >
         <VideoJSPlayer options={videoJsOptions} onReady={handlePlayerReady} />
+
         {playerRef.current && playerInitialized && (
           <Box
             sx={{
@@ -141,83 +168,56 @@ export function Component() {
               right: 0,
               bottom: 0,
               position: "absolute",
+              opacity: showControls ? 1 : 0,
+              transition: "opacity 0.3s ease",
+              pointerEvents: showControls ? "auto" : "none",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              p: { xs: 2, sm: 3, md: 4 },
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 70%, rgba(0,0,0,0.85) 100%)",
             }}
           >
-            <Box px={2} sx={{ position: "absolute", top: 75 }}>
+            {/* Top Bar: Back Button & Title */}
+            <Stack direction="row" alignItems="center" spacing={2}>
               <PlayerControlButton onClick={handleGoBack}>
-                <KeyboardBackspaceIcon />
+                <KeyboardBackspaceIcon sx={{ fontSize: 28 }} />
               </PlayerControlButton>
-            </Box>
-            <Box
-              px={2}
-              sx={{
-                position: "absolute",
-                top: { xs: "40%", sm: "55%", md: "60%" },
-                left: 0,
-              }}
-            >
               <Typography
-                variant="h3"
+                variant="h5"
                 sx={{
                   fontWeight: 700,
-                  color: "white",
+                  color: "#ffffff",
+                  textShadow: "1px 2px 4px rgba(0,0,0,0.8)",
                 }}
               >
                 {movieDetail?.title || "Feature Presentation"}
               </Typography>
-            </Box>
-            <Box
-              px={{ xs: 0, sm: 1, md: 2 }}
-              sx={{
-                position: "absolute",
-                top: { xs: "50%", sm: "60%", md: "70%" },
-                right: 0,
-              }}
-            >
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  px: 1,
-                  py: 0.5,
-                  fontWeight: 700,
-                  color: "white",
-                  bgcolor: "red",
-                  borderRadius: "12px 0px 0px 12px",
-                }}
-              >
-                12+
-              </Typography>
-            </Box>
+            </Stack>
 
-            <Box
-              px={{ xs: 1, sm: 2 }}
-              sx={{ position: "absolute", bottom: 20, left: 0, right: 0 }}
-            >
+            {/* Bottom Controls Area */}
+            <Box sx={{ width: "100%" }}>
               {/* Seekbar */}
-              <Stack direction="row" alignItems="center" spacing={1}>
+              <Box sx={{ mb: 1 }}>
                 <PlayerSeekbar
                   playedSeconds={playerState.playedSeconds}
                   duration={playerState.duration}
                   seekTo={handleSeekTo}
                 />
-              </Stack>
-              {/* end Seekbar */}
+              </Box>
 
-              {/* Controller */}
-              <Stack direction="row" alignItems="center">
-                {/* left controller */}
-                <Stack
-                  direction="row"
-                  spacing={{ xs: 0.5, sm: 1.5, md: 2 }}
-                  alignItems="center"
-                >
+              {/* Action Buttons Row */}
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                {/* Left controls */}
+                <Stack direction="row" spacing={{ xs: 1, sm: 2 }} alignItems="center">
                   {!playerState.paused ? (
                     <PlayerControlButton
                       onClick={() => {
                         playerRef.current?.pause();
                       }}
                     >
-                      <PauseIcon />
+                      <PauseIcon sx={{ fontSize: 32 }} />
                     </PlayerControlButton>
                   ) : (
                     <PlayerControlButton
@@ -225,63 +225,56 @@ export function Component() {
                         playerRef.current?.play();
                       }}
                     >
-                      <PlayArrowIcon />
+                      <PlayArrowIcon sx={{ fontSize: 32 }} />
                     </PlayerControlButton>
                   )}
+
                   <PlayerControlButton>
-                    <SkipNextIcon />
+                    <SkipNextIcon sx={{ fontSize: 28 }} />
                   </PlayerControlButton>
+
                   <VolumeControllers
                     muted={playerState.muted}
                     handleVolumeToggle={() => {
                       playerRef.current?.muted(!playerState.muted);
-                      setPlayerState((draft) => {
-                        return { ...draft, muted: !draft.muted };
-                      });
+                      setPlayerState((draft) => ({ ...draft, muted: !draft.muted }));
                     }}
                     value={playerState.volume}
                     handleVolume={handleVolumeChange}
                   />
-                  <Typography variant="caption" sx={{ color: "white" }}>
+
+                  <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.8)", fontWeight: 500 }}>
                     {`${formatTime(playerState.playedSeconds)} / ${formatTime(
                       playerState.duration
                     )}`}
                   </Typography>
                 </Stack>
-                {/* end left controller */}
 
-                {/* middle time */}
-                <Box flexGrow={1}>
+                {/* Middle tagline / title */}
+                <Box sx={{ display: { xs: "none", md: "block" } }}>
                   <MaxLineTypography
                     maxLine={1}
-                    variant="subtitle1"
+                    variant="subtitle2"
                     textAlign="center"
-                    sx={{ maxWidth: 300, mx: "auto", color: "white" }}
+                    sx={{ maxWidth: 350, mx: "auto", color: "rgba(255, 255, 255, 0.7)" }}
                   >
-                    {movieDetail?.tagline || movieDetail?.overview || "Now Playing"}
+                    {movieDetail?.tagline || movieDetail?.overview || ""}
                   </MaxLineTypography>
                 </Box>
-                {/* end middle time */}
 
-                {/* right controller */}
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={{ xs: 0.5, sm: 1.5, md: 2 }}
-                >
+                {/* Right controls */}
+                <Stack direction="row" alignItems="center" spacing={{ xs: 1, sm: 2 }}>
                   <PlayerControlButton>
-                    <SettingsIcon />
+                    <SettingsIcon sx={{ fontSize: 24 }} />
                   </PlayerControlButton>
                   <PlayerControlButton>
-                    <BrandingWatermarkOutlinedIcon />
+                    <BrandingWatermarkOutlinedIcon sx={{ fontSize: 24 }} />
                   </PlayerControlButton>
-                  <PlayerControlButton>
-                    <FullscreenIcon />
+                  <PlayerControlButton onClick={toggleFullscreen}>
+                    <FullscreenIcon sx={{ fontSize: 28 }} />
                   </PlayerControlButton>
                 </Stack>
-                {/* end right controller */}
               </Stack>
-              {/* end Controller */}
             </Box>
           </Box>
         )}

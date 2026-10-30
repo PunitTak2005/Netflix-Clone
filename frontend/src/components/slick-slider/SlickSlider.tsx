@@ -1,17 +1,15 @@
 import { useState, useRef } from "react";
 import Slider, { Settings } from "react-slick";
-import { motion } from "framer-motion";
-
 import { styled, Theme, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 import CustomNavigation from "./CustomNavigation";
 import VideoItemWithHover from "src/components/VideoItemWithHover";
 import { ARROW_MAX_WIDTH } from "src/constant";
 import NetflixNavigationLink from "src/components/NetflixNavigationLink";
-import MotionContainer from "src/components/animate/MotionContainer";
-import { varFadeIn } from "src/components/animate/variants/fade/FadeIn";
 import { CustomGenre, Genre } from "src/types/Genre";
 import { Movie } from "src/types/Movie";
 import { PaginatedMovieResult } from "src/types/Common";
@@ -36,10 +34,6 @@ const StyledSlider = styled(Slider)(
       "& .slick-list > .slick-track": {
         margin: "0px !important",
       },
-      "& .slick-list > .slick-track > .slick-current > div > .NetflixBox-root > .NetflixPaper-root:hover":
-        {
-          transformOrigin: "0% 50% !important",
-        },
     },
     [theme.breakpoints.down("sm")]: {
       "& > .slick-list": {
@@ -51,9 +45,39 @@ const StyledSlider = styled(Slider)(
 
 interface SlideItemProps {
   item: Movie;
+  rank?: number;
 }
 
-function SlideItem({ item }: SlideItemProps) {
+function SlideItem({ item, rank }: SlideItemProps) {
+  if (rank !== undefined) {
+    return (
+      <Box sx={{ pr: { xs: 0.5, sm: 1 }, position: "relative" }}>
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          {/* Top 10 Stylized Rank Number */}
+          <Typography
+            sx={{
+              fontSize: { xs: "3.5rem", sm: "4.5rem", md: "6rem", lg: "7rem" },
+              fontWeight: 900,
+              lineHeight: 0.8,
+              fontFamily: "Impact, sans-serif",
+              color: "#000000",
+              WebkitTextStroke: "3px #595959",
+              letterSpacing: "-4px",
+              userSelect: "none",
+              mr: -1.5,
+              zIndex: 2,
+            }}
+          >
+            {rank}
+          </Typography>
+          <Box sx={{ flexGrow: 1, zIndex: 3 }}>
+            <VideoItemWithHover video={item} />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ pr: { xs: 0.5, sm: 1 } }}>
       <VideoItemWithHover video={item} />
@@ -65,11 +89,17 @@ interface SlickSliderProps {
   data: PaginatedMovieResult;
   genre: Genre | CustomGenre;
   handleNext: (page: number) => void;
+  isTop10Row?: boolean;
 }
-export default function SlickSlider({ data, genre }: SlickSliderProps) {
+
+export default function SlickSlider({
+  data,
+  genre,
+  isTop10Row,
+}: SlickSliderProps) {
   const sliderRef = useRef<Slider>(null);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [showExplore, setShowExplore] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isEnd, setIsEnd] = useState(false);
   const theme = useTheme();
 
@@ -87,28 +117,22 @@ export default function SlickSlider({ data, genre }: SlickSliderProps) {
     arrows: false,
     infinite: false,
     lazyLoad: "ondemand",
-    slidesToShow: 6,
-    slidesToScroll: 6,
-    // afterChange: (current) => {
-    //   console.log("After Change", current);
-    // },
+    slidesToShow: isTop10Row ? 5 : 6,
+    slidesToScroll: isTop10Row ? 5 : 6,
     beforeChange,
-    // onEdge: (direction) => {
-    //   console.log("Edge: ", direction);
-    // },
     responsive: [
       {
         breakpoint: 1536,
         settings: {
-          slidesToShow: 5,
-          slidesToScroll: 5,
+          slidesToShow: isTop10Row ? 4 : 5,
+          slidesToScroll: isTop10Row ? 4 : 5,
         },
       },
       {
         breakpoint: 1200,
         settings: {
-          slidesToShow: 4,
-          slidesToScroll: 4,
+          slidesToShow: isTop10Row ? 3 : 4,
+          slidesToScroll: isTop10Row ? 3 : 4,
         },
       },
       {
@@ -136,44 +160,88 @@ export default function SlickSlider({ data, genre }: SlickSliderProps) {
     sliderRef.current?.slickNext();
   };
 
+  const filteredMovies = data.results.filter((i) => !!i.backdrop_path);
+  const title = isTop10Row ? "Top 10 Movies Today" : `${genre.name} Movies`;
+
   return (
-    <Box sx={{ overflow: "hidden", height: "100%", zIndex: 1 }}>
-      {data.results.length > 0 && (
+    <Box sx={{ overflow: "hidden", height: "100%", zIndex: 1, position: "relative" }}>
+      {filteredMovies.length > 0 && (
         <>
+          {/* Row Header */}
           <Stack
-            spacing={2}
             direction="row"
             alignItems="center"
-            sx={{ mb: 2, pl: { xs: "30px", sm: "60px" } }}
+            spacing={1.5}
+            sx={{
+              mb: 1.5,
+              pl: { xs: "20px", sm: "36px", md: "60px" },
+              pr: { xs: "20px", sm: "36px", md: "60px" },
+            }}
           >
             <NetflixNavigationLink
-              variant="h5"
               to={`/genre/${
                 genre.id || genre.name.toLowerCase().replace(" ", "_")
               }`}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
               sx={{
-                display: "inline-block",
-                fontWeight: 700,
-              }}
-              onMouseOver={() => {
-                setShowExplore(true);
-              }}
-              onMouseLeave={() => {
-                setShowExplore(false);
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                cursor: "pointer",
+                "&:hover .explore-arrow": {
+                  transform: "translateX(4px)",
+                  opacity: 1,
+                },
+                "&:hover .explore-text": {
+                  opacity: 1,
+                  maxWidth: "100px",
+                },
               }}
             >
-              {`${genre.name} Movies `}
-              <MotionContainer
-                open={showExplore}
-                initial="initial"
-                sx={{ display: "inline", color: "success.main" }}
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: { xs: "1rem", sm: "1.2rem", md: "1.35rem" },
+                  color: "#e5e5e5",
+                  lineHeight: 1.25,
+                  transition: "color 0.2s ease",
+                  "&:hover": {
+                    color: "#ffffff",
+                  },
+                }}
               >
-                {"Explore All".split("").map((letter, index) => (
-                  <motion.span key={index} variants={varFadeIn}>
-                    {letter}
-                  </motion.span>
-                ))}
-              </MotionContainer>
+                {title}
+              </Typography>
+
+              {/* "Explore All" animated reveal */}
+              <Typography
+                className="explore-text"
+                sx={{
+                  color: "#54b9c5",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  opacity: isHovered ? 1 : 0,
+                  maxWidth: isHovered ? "100px" : "0px",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.3s ease",
+                  display: { xs: "none", sm: "inline-block" },
+                }}
+              >
+                Explore All
+              </Typography>
+              <ArrowForwardIosIcon
+                className="explore-arrow"
+                sx={{
+                  fontSize: "0.75rem",
+                  color: "#54b9c5",
+                  opacity: isHovered ? 1 : 0,
+                  transition: "all 0.2s ease",
+                  display: { xs: "none", sm: "inline-block" },
+                }}
+              />
             </NetflixNavigationLink>
           </Stack>
 
@@ -191,11 +259,13 @@ export default function SlickSlider({ data, genre }: SlickSliderProps) {
                 padding={ARROW_MAX_WIDTH}
                 theme={theme}
               >
-                {data.results
-                  .filter((i) => !!i.backdrop_path)
-                  .map((item) => (
-                    <SlideItem key={item.id} item={item} />
-                  ))}
+                {filteredMovies.map((item, idx) => (
+                  <SlideItem
+                    key={item.id}
+                    item={item}
+                    rank={isTop10Row && idx < 10 ? idx + 1 : undefined}
+                  />
+                ))}
               </StyledSlider>
             </CustomNavigation>
           </RootStyle>
